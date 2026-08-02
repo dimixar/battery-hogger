@@ -10,6 +10,7 @@ final class ProcessSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
     let name: String
     let executablePath: String?
     let launchDate: Date
+    let resourceCoalitionIdentifier: UInt64
     let cpuPowerWatts: Double
     let cpuPercentage: Double
     let interruptWakeupsPerSecond: Double
@@ -26,6 +27,7 @@ final class ProcessSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
         name: String,
         executablePath: String?,
         launchDate: Date,
+        resourceCoalitionIdentifier: UInt64,
         cpuPowerWatts: Double,
         cpuPercentage: Double,
         interruptWakeupsPerSecond: Double,
@@ -41,6 +43,7 @@ final class ProcessSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
         self.name = name
         self.executablePath = executablePath
         self.launchDate = launchDate
+        self.resourceCoalitionIdentifier = resourceCoalitionIdentifier
         self.cpuPowerWatts = cpuPowerWatts
         self.cpuPercentage = cpuPercentage
         self.interruptWakeupsPerSecond = interruptWakeupsPerSecond
@@ -65,6 +68,9 @@ final class ProcessSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
         self.name = name
         executablePath = coder.decodeObject(of: NSString.self, forKey: CodingKey.executablePath) as String?
         self.launchDate = launchDate
+        resourceCoalitionIdentifier = UInt64(
+            bitPattern: coder.decodeInt64(forKey: CodingKey.resourceCoalitionIdentifier)
+        )
         cpuPowerWatts = coder.decodeDouble(forKey: CodingKey.cpuPowerWatts)
         cpuPercentage = coder.decodeDouble(forKey: CodingKey.cpuPercentage)
         interruptWakeupsPerSecond = coder.decodeDouble(forKey: CodingKey.interruptWakeupsPerSecond)
@@ -82,6 +88,10 @@ final class ProcessSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
         coder.encode(name, forKey: CodingKey.name)
         coder.encode(executablePath, forKey: CodingKey.executablePath)
         coder.encode(launchDate, forKey: CodingKey.launchDate)
+        coder.encode(
+            Int64(bitPattern: resourceCoalitionIdentifier),
+            forKey: CodingKey.resourceCoalitionIdentifier
+        )
         coder.encode(cpuPowerWatts, forKey: CodingKey.cpuPowerWatts)
         coder.encode(cpuPercentage, forKey: CodingKey.cpuPercentage)
         coder.encode(interruptWakeupsPerSecond, forKey: CodingKey.interruptWakeupsPerSecond)
@@ -99,6 +109,7 @@ final class ProcessSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
         static let name = "name"
         static let executablePath = "executablePath"
         static let launchDate = "launchDate"
+        static let resourceCoalitionIdentifier = "resourceCoalitionIdentifier"
         static let cpuPowerWatts = "cpuPowerWatts"
         static let cpuPercentage = "cpuPercentage"
         static let interruptWakeupsPerSecond = "interruptWakeupsPerSecond"

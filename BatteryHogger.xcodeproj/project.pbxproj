@@ -27,6 +27,7 @@
 		A10000000000000000000012 /* WorkloadDetector.swift in Daemon Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000011 /* WorkloadDetector.swift */; };
 		A10000000000000000000013 /* WorkloadAnalyzer.swift in Daemon Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000012 /* WorkloadAnalyzer.swift */; };
 		A10000000000000000000014 /* MonitorEngine.swift in Daemon Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000013 /* MonitorEngine.swift */; };
+		A10000000000000000000015 /* CoalitionGPUEnergyReader.swift in Daemon Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000014 /* CoalitionGPUEnergyReader.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -84,6 +85,7 @@
 		B10000000000000000000011 /* WorkloadDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkloadDetector.swift; sourceTree = "<group>"; };
 		B10000000000000000000012 /* WorkloadAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkloadAnalyzer.swift; sourceTree = "<group>"; };
 		B10000000000000000000013 /* MonitorEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorEngine.swift; sourceTree = "<group>"; };
+		B10000000000000000000014 /* CoalitionGPUEnergyReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoalitionGPUEnergyReader.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -133,6 +135,7 @@
 				B10000000000000000000008 /* main.swift */,
 				B10000000000000000000009 /* MonitorService.swift */,
 				B1000000000000000000000A /* ProcessSampler.swift */,
+				B10000000000000000000014 /* CoalitionGPUEnergyReader.swift */,
 				B10000000000000000000011 /* WorkloadDetector.swift */,
 				B10000000000000000000012 /* WorkloadAnalyzer.swift */,
 				B10000000000000000000013 /* MonitorEngine.swift */,
@@ -279,6 +282,7 @@
 				A10000000000000000000012 /* WorkloadDetector.swift in Daemon Sources */,
 				A10000000000000000000013 /* WorkloadAnalyzer.swift in Daemon Sources */,
 				A10000000000000000000014 /* MonitorEngine.swift in Daemon Sources */,
+				A10000000000000000000015 /* CoalitionGPUEnergyReader.swift in Daemon Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

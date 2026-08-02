@@ -114,6 +114,7 @@ shared_sources=(
 )
 
 daemon_sources=(
+    "$project_directory/Daemon/CoalitionGPUEnergyReader.swift"
     "$project_directory/Daemon/ProcessSampler.swift"
     "$project_directory/Daemon/WorkloadDetector.swift"
     "$project_directory/Daemon/WorkloadAnalyzer.swift"

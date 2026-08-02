@@ -60,7 +60,7 @@ struct MenuContentView: View {
                 Text(selectedWorkload?.displayName ?? "Battery Hogger")
                     .font(.headline)
                     .lineLimit(1)
-                Text(selectedWorkload == nil ? "Estimated CPU power by workload" : "Workload details")
+                Text(selectedWorkload == nil ? "Estimated CPU + GPU power by workload" : "Workload details")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -77,7 +77,7 @@ struct MenuContentView: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Privileged monitor is not active", systemImage: "lock.shield")
                 .font(.headline)
-            Text("Approve the read-only system monitor to inspect CPU-energy counters for every process.")
+            Text("Approve the read-only system monitor to inspect CPU and GPU energy counters.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
 
@@ -188,9 +188,12 @@ private struct WorkloadRow: View {
                 Text(workload.currentPowerWatts, format: .number.precision(.fractionLength(3)))
                     .monospacedDigit()
                     .foregroundStyle(workload.status == .sustainedHog ? .red : .primary)
-                Text("W CPU estimate")
+                Text("W total estimate")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+                Text(componentSummary)
+                    .font(.system(size: 9).monospacedDigit())
+                    .foregroundStyle(.tertiary)
             }
             Image(systemName: "chevron.right")
                 .font(.caption)
@@ -204,8 +207,26 @@ private struct WorkloadRow: View {
 
     private var subtitle: String {
         let processCount = workload.processes.count
-        let kind = workload.bundleIdentifier == nil ? "Standalone process" : "Application"
+        let kind: String
+        if workload.bundleIdentifier != nil {
+            kind = "Application"
+        } else {
+            kind = processCount == 1 ? "Standalone process" : "Process group"
+        }
         return "\(kind) · \(processCount) process\(processCount == 1 ? "" : "es")"
+    }
+
+    private var componentSummary: String {
+        let cpu = workload.currentCPUPowerWatts.formatted(
+            .number.precision(.fractionLength(2))
+        )
+        guard workload.isGPUEnergyAvailable else {
+            return "CPU \(cpu) · GPU unavailable"
+        }
+        let gpu = workload.currentGPUPowerWatts.formatted(
+            .number.precision(.fractionLength(2))
+        )
+        return "CPU \(cpu) · GPU \(gpu)"
     }
 
     @ViewBuilder
@@ -232,7 +253,7 @@ private struct WorkloadDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 if workload.status == .sustainedHog {
-                    Label("Sustained high CPU energy use", systemImage: "exclamationmark.triangle.fill")
+                    Label("Sustained high estimated power use", systemImage: "exclamationmark.triangle.fill")
                         .font(.callout.weight(.semibold))
                         .foregroundStyle(.red)
                 }
@@ -269,23 +290,66 @@ private struct WorkloadDetailView: View {
     }
 
     private var metrics: some View {
-        HStack(spacing: 8) {
-            MetricCard(
-                title: "Current",
-                value: workload.currentPowerWatts.formatted(.number.precision(.fractionLength(3))),
-                unit: "W"
+        VStack(alignment: .leading, spacing: 10) {
+            MetricSection(
+                title: "Current estimate",
+                unit: "W",
+                total: workload.currentPowerWatts,
+                cpu: workload.currentCPUPowerWatts,
+                gpu: workload.currentGPUPowerWatts,
+                gpuAvailable: workload.isGPUEnergyAvailable,
+                fractionLength: 3
             )
-            MetricCard(
-                title: "90s average",
-                value: workload.rollingAveragePowerWatts.formatted(.number.precision(.fractionLength(3))),
-                unit: "W"
+            MetricSection(
+                title: "90-second average",
+                unit: "W",
+                total: workload.rollingAveragePowerWatts,
+                cpu: workload.rollingAverageCPUPowerWatts,
+                gpu: workload.rollingAverageGPUPowerWatts,
+                gpuAvailable: workload.isGPUEnergyAvailable,
+                fractionLength: 3
             )
-            MetricCard(
+            MetricSection(
                 title: "Session energy",
-                value: workload.cumulativeEnergyWattHours.formatted(.number.precision(.fractionLength(6))),
-                unit: "Wh"
+                unit: "Wh",
+                total: workload.cumulativeEnergyWattHours,
+                cpu: workload.cumulativeCPUEnergyWattHours,
+                gpu: workload.cumulativeGPUEnergyWattHours,
+                gpuAvailable: workload.isGPUEnergyAvailable,
+                fractionLength: 6
             )
         }
+    }
+}
+
+private struct MetricSection: View {
+    let title: String
+    let unit: String
+    let total: Double
+    let cpu: Double
+    let gpu: Double
+    let gpuAvailable: Bool
+    let fractionLength: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                MetricCard(title: "Total", value: formatted(total), unit: unit)
+                MetricCard(title: "CPU", value: formatted(cpu), unit: unit)
+                MetricCard(
+                    title: "GPU",
+                    value: gpuAvailable ? formatted(gpu) : "—",
+                    unit: gpuAvailable ? unit : ""
+                )
+            }
+        }
+    }
+
+    private func formatted(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(fractionLength)))
     }
 }
 
@@ -334,9 +398,9 @@ private struct ProcessDetailRow: View {
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 3) {
-                Text("\(process.cpuPowerWatts.formatted(.number.precision(.fractionLength(3)))) W")
+                Text("\(process.cpuPowerWatts.formatted(.number.precision(.fractionLength(3)))) W CPU")
                     .font(.callout.monospacedDigit())
-                Text("\(process.cumulativeEnergyWattHours.formatted(.number.precision(.fractionLength(6)))) Wh")
+                Text("\(process.cumulativeEnergyWattHours.formatted(.number.precision(.fractionLength(6)))) Wh CPU")
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
@@ -351,6 +415,7 @@ private struct ProcessDetailRow: View {
         \(path)
         Launched: \(process.launchDate.formatted())
         CPU: \(process.cpuPercentage.formatted(.number.precision(.fractionLength(1))))%
+        Resource coalition: \(process.resourceCoalitionIdentifier == 0 ? "Unavailable" : String(process.resourceCoalitionIdentifier))
         Wakeups: \(process.interruptWakeupsPerSecond.formatted(.number.precision(.fractionLength(1))))/s
         """
     }

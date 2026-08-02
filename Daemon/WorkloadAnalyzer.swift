@@ -17,7 +17,9 @@ final class WorkloadAnalyzer {
 
     private final class SessionState {
         let monitoredSince: Date
-        var cumulativeEnergyNanojoules: UInt64 = 0
+        var cumulativeCPUEnergyNanojoules: UInt64 = 0
+        var cumulativeGPUEnergyNanojoules: UInt64 = 0
+        var hasGPUEnergyMeasurement = false
         var detector = WorkloadDetector()
 
         init(monitoredSince: Date) {
@@ -70,7 +72,9 @@ final class WorkloadAnalyzer {
                 )
             } else {
                 descriptor = Descriptor(
-                    key: standaloneKey(for: measurement.identity),
+                    key: measurement.resourceCoalitionID.map {
+                        "coalition:\($0)"
+                    } ?? standaloneKey(for: measurement.identity),
                     displayName: measurement.name,
                     bundleIdentifier: nil,
                     mainExecutablePath: measurement.executablePath
@@ -84,24 +88,63 @@ final class WorkloadAnalyzer {
             descriptors[descriptor.key] = descriptor
         }
 
+        let gpuMeasurementsByCoalition = Dictionary(
+            uniqueKeysWithValues: batch.coalitionGPUMeasurements.map {
+                ($0.coalitionID, $0)
+            }
+        )
+        let gpuCoalitionOwners = gpuCoalitionOwners(
+            groups: groups,
+            descriptors: descriptors
+        )
+        var gpuMeasurementsByGroup: [String: [CoalitionGPUMeasurement]] = [:]
+        for (coalitionID, groupKey) in gpuCoalitionOwners {
+            if let measurement = gpuMeasurementsByCoalition[coalitionID] {
+                gpuMeasurementsByGroup[groupKey, default: []].append(measurement)
+            }
+        }
+
         var snapshots: [WorkloadSnapshot] = []
         snapshots.reserveCapacity(groups.count)
         let activeKeys = Set(groups.keys)
 
         for (key, measurements) in groups {
-            guard let descriptor = descriptors[key] else { continue }
+            guard var descriptor = descriptors[key] else { continue }
+            if descriptor.bundleIdentifier == nil,
+               let rootIdentity = workloadRoot(in: measurements, mainExecutablePath: nil),
+               let root = measurements.first(where: { $0.identity == rootIdentity }) {
+                descriptor = Descriptor(
+                    key: key,
+                    displayName: root.name,
+                    bundleIdentifier: nil,
+                    mainExecutablePath: root.executablePath
+                )
+            }
             let state = sessions[key] ?? SessionState(monitoredSince: batch.sampledAtDate)
             sessions[key] = state
 
-            let intervalEnergy = measurements.reduce(UInt64(0)) {
+            let cpuIntervalEnergy = measurements.reduce(UInt64(0)) {
                 $0 &+ $1.energyDeltaNanojoules
             }
-            state.cumulativeEnergyNanojoules &+= intervalEnergy
+            let gpuMeasurements = gpuMeasurementsByGroup[key] ?? []
+            state.hasGPUEnergyMeasurement = state.hasGPUEnergyMeasurement
+                || !gpuMeasurements.isEmpty
+            let gpuIntervalEnergy = gpuMeasurements.reduce(UInt64(0)) {
+                $0 &+ $1.energyDeltaNanojoules
+            }
+            state.cumulativeCPUEnergyNanojoules &+= cpuIntervalEnergy
+            state.cumulativeGPUEnergyNanojoules &+= gpuIntervalEnergy
 
-            let currentPower = measurements.reduce(0) { $0 + $1.cpuPowerWatts }
-            let sampleDuration = measurements.map(\ProcessMeasurement.sampleDuration).max() ?? 0
+            let currentCPUPower = measurements.reduce(0) { $0 + $1.cpuPowerWatts }
+            let currentGPUPower = gpuMeasurements.reduce(0) { $0 + $1.gpuPowerWatts }
+            let currentPower = currentCPUPower + currentGPUPower
+            let sampleDuration = max(
+                measurements.map(\ProcessMeasurement.sampleDuration).max() ?? 0,
+                gpuMeasurements.map(\CoalitionGPUMeasurement.sampleDuration).max() ?? 0
+            )
             let detection = state.detector.record(
-                powerWatts: currentPower,
+                cpuPowerWatts: currentCPUPower,
+                gpuPowerWatts: currentGPUPower,
                 duration: sampleDuration,
                 at: batch.sampledAtNanoseconds
             )
@@ -125,9 +168,23 @@ final class WorkloadAnalyzer {
                     bundleIdentifier: descriptor.bundleIdentifier,
                     status: detection.status,
                     currentPowerWatts: currentPower,
+                    currentCPUPowerWatts: currentCPUPower,
+                    currentGPUPowerWatts: currentGPUPower,
                     rollingAveragePowerWatts: detection.rollingAveragePowerWatts,
-                    cumulativeEnergyWattHours: Double(state.cumulativeEnergyNanojoules)
+                    rollingAverageCPUPowerWatts: detection.rollingAverageCPUPowerWatts,
+                    rollingAverageGPUPowerWatts: detection.rollingAverageGPUPowerWatts,
+                    cumulativeEnergyWattHours: Double(
+                        state.cumulativeCPUEnergyNanojoules
+                            &+ state.cumulativeGPUEnergyNanojoules
+                    ) / Self.nanojoulesPerWattHour,
+                    cumulativeCPUEnergyWattHours: Double(
+                        state.cumulativeCPUEnergyNanojoules
+                    ) / Self.nanojoulesPerWattHour,
+                    cumulativeGPUEnergyWattHours: Double(
+                        state.cumulativeGPUEnergyNanojoules
+                    )
                         / Self.nanojoulesPerWattHour,
+                    isGPUEnergyAvailable: state.hasGPUEnergyMeasurement,
                     monitoredSince: state.monitoredSince,
                     processes: processSnapshots
                 )
@@ -135,7 +192,8 @@ final class WorkloadAnalyzer {
         }
 
         sessions = sessions.filter { key, _ in
-            !key.hasPrefix("process:") || activeKeys.contains(key)
+            let isEphemeral = key.hasPrefix("process:") || key.hasPrefix("coalition:")
+            return !isEphemeral || activeKeys.contains(key)
         }
 
         return snapshots.sorted {
@@ -247,6 +305,7 @@ final class WorkloadAnalyzer {
             name: measurement.name,
             executablePath: measurement.executablePath,
             launchDate: measurement.launchDate,
+            resourceCoalitionIdentifier: measurement.resourceCoalitionID ?? 0,
             cpuPowerWatts: measurement.cpuPowerWatts,
             cpuPercentage: measurement.cpuPercentage,
             interruptWakeupsPerSecond: measurement.interruptWakeupsPerSecond,
@@ -261,6 +320,41 @@ final class WorkloadAnalyzer {
 
     private func standaloneKey(for identity: ProcessIdentity) -> String {
         "process:\(identity.pid):\(identity.startSeconds):\(identity.startMicroseconds)"
+    }
+
+    private func gpuCoalitionOwners(
+        groups: [String: [ProcessMeasurement]],
+        descriptors: [String: Descriptor]
+    ) -> [UInt64: String] {
+        var candidates: [UInt64: [(key: String, memberCount: Int, isBundle: Bool)]] = [:]
+
+        for (key, measurements) in groups {
+            let counts = Dictionary(
+                grouping: measurements.compactMap(\.resourceCoalitionID),
+                by: { $0 }
+            ).mapValues(\.count)
+            for (coalitionID, memberCount) in counts {
+                candidates[coalitionID, default: []].append(
+                    (
+                        key: key,
+                        memberCount: memberCount,
+                        isBundle: descriptors[key]?.bundleIdentifier != nil
+                    )
+                )
+            }
+        }
+
+        return candidates.compactMapValues { values in
+            values.max {
+                if $0.isBundle != $1.isBundle {
+                    return !$0.isBundle && $1.isBundle
+                }
+                if $0.memberCount != $1.memberCount {
+                    return $0.memberCount < $1.memberCount
+                }
+                return $0.key > $1.key
+            }?.key
+        }
     }
 
     private func statusRank(_ status: WorkloadStatus) -> Int {

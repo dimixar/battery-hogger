@@ -14,6 +14,7 @@ struct ProcessMeasurement: Sendable {
     let name: String
     let executablePath: String?
     let launchDate: Date
+    let resourceCoalitionID: UInt64?
     let sampledAtNanoseconds: UInt64
     let sampleDuration: TimeInterval
     let energyDeltaNanojoules: UInt64
@@ -25,10 +26,19 @@ struct ProcessMeasurement: Sendable {
     let diskWriteBytesPerSecond: Double
 }
 
+struct CoalitionGPUMeasurement: Sendable {
+    let coalitionID: UInt64
+    let sampledAtNanoseconds: UInt64
+    let sampleDuration: TimeInterval
+    let energyDeltaNanojoules: UInt64
+    let gpuPowerWatts: Double
+}
+
 struct ProcessSampleBatch: Sendable {
     let sampledAtNanoseconds: UInt64
     let sampledAtDate: Date
     let measurements: [ProcessMeasurement]
+    let coalitionGPUMeasurements: [CoalitionGPUMeasurement]
 }
 
 final class ProcessSampler: @unchecked Sendable {
@@ -49,6 +59,12 @@ final class ProcessSampler: @unchecked Sendable {
         let name: String
         let executablePath: String?
         let launchDate: Date
+        let resourceCoalitionID: UInt64?
+    }
+
+    private struct GPUCounters {
+        let sampledAtNanoseconds: UInt64
+        let energyNanojoules: UInt64
     }
 
     private struct Rates {
@@ -74,8 +90,10 @@ final class ProcessSampler: @unchecked Sendable {
     private static let maximumRateIntervalNanoseconds: UInt64 = 15_000_000_000
 
     private var previousCounters: [ProcessIdentity: Counters] = [:]
+    private var previousGPUCounters: [UInt64: GPUCounters] = [:]
     private var cumulativeEnergy: [ProcessIdentity: UInt64] = [:]
     private let timebase: mach_timebase_info_data_t
+    private let gpuEnergyReader = CoalitionGPUEnergyReader()
     private let lock = NSLock()
 
     init() {
@@ -130,6 +148,7 @@ final class ProcessSampler: @unchecked Sendable {
                     name: metadata.name,
                     executablePath: metadata.executablePath,
                     launchDate: metadata.launchDate,
+                    resourceCoalitionID: metadata.resourceCoalitionID,
                     sampledAtNanoseconds: sampledAtNanoseconds,
                     sampleDuration: rates.duration,
                     energyDeltaNanojoules: rates.energyDeltaNanojoules,
@@ -147,10 +166,42 @@ final class ProcessSampler: @unchecked Sendable {
         let activeIdentities = Set(nextCounters.keys)
         cumulativeEnergy = cumulativeEnergy.filter { activeIdentities.contains($0.key) }
 
+        let activeCoalitionIDs = Set(measurements.compactMap(\.resourceCoalitionID))
+        var nextGPUCounters: [UInt64: GPUCounters] = [:]
+        var gpuMeasurements: [CoalitionGPUMeasurement] = []
+        nextGPUCounters.reserveCapacity(activeCoalitionIDs.count)
+        gpuMeasurements.reserveCapacity(activeCoalitionIDs.count)
+
+        for coalitionID in activeCoalitionIDs {
+            guard let snapshot = gpuEnergyReader.snapshot(for: coalitionID) else {
+                continue
+            }
+            let counters = GPUCounters(
+                sampledAtNanoseconds: sampledAtNanoseconds,
+                energyNanojoules: snapshot.energyNanojoules
+            )
+            nextGPUCounters[coalitionID] = counters
+            let rate = gpuRate(
+                current: counters,
+                previous: previousGPUCounters[coalitionID]
+            )
+            gpuMeasurements.append(
+                CoalitionGPUMeasurement(
+                    coalitionID: coalitionID,
+                    sampledAtNanoseconds: sampledAtNanoseconds,
+                    sampleDuration: rate.duration,
+                    energyDeltaNanojoules: rate.energyDeltaNanojoules,
+                    gpuPowerWatts: rate.powerWatts
+                )
+            )
+        }
+        previousGPUCounters = nextGPUCounters
+
         return ProcessSampleBatch(
             sampledAtNanoseconds: sampledAtNanoseconds,
             sampledAtDate: sampledAtDate,
-            measurements: measurements
+            measurements: measurements,
+            coalitionGPUMeasurements: gpuMeasurements
         )
     }
 
@@ -194,7 +245,8 @@ final class ProcessSampler: @unchecked Sendable {
             uid: info.pbi_uid,
             name: processName(for: pid),
             executablePath: executablePath(for: pid),
-            launchDate: launchDate
+            launchDate: launchDate,
+            resourceCoalitionID: gpuEnergyReader.resourceCoalitionID(for: pid)
         )
     }
 
@@ -257,6 +309,30 @@ final class ProcessSampler: @unchecked Sendable {
 
     private func nonnegativeDelta(_ current: UInt64, _ previous: UInt64) -> UInt64 {
         current >= previous ? current - previous : 0
+    }
+
+    private func gpuRate(
+        current: GPUCounters,
+        previous: GPUCounters?
+    ) -> (duration: TimeInterval, energyDeltaNanojoules: UInt64, powerWatts: Double) {
+        guard
+            let previous,
+            current.sampledAtNanoseconds > previous.sampledAtNanoseconds
+        else {
+            return (0, 0, 0)
+        }
+
+        let elapsedNanoseconds = current.sampledAtNanoseconds - previous.sampledAtNanoseconds
+        guard elapsedNanoseconds <= Self.maximumRateIntervalNanoseconds else {
+            return (0, 0, 0)
+        }
+
+        let delta = nonnegativeDelta(current.energyNanojoules, previous.energyNanojoules)
+        return (
+            Double(elapsedNanoseconds) / 1_000_000_000,
+            delta,
+            Double(delta) / Double(elapsedNanoseconds)
+        )
     }
 
     private func decodeUTF8(_ buffer: [CChar], length: Int) -> String {
