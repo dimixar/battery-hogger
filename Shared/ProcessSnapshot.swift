@@ -13,9 +13,6 @@ final class ProcessSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
     let resourceCoalitionIdentifier: UInt64
     let cpuPowerWatts: Double
     let cpuPercentage: Double
-    let interruptWakeupsPerSecond: Double
-    let diskReadBytesPerSecond: Double
-    let diskWriteBytesPerSecond: Double
     let sampleDuration: TimeInterval
     let cumulativeEnergyWattHours: Double
     let isWorkloadRoot: Bool
@@ -30,9 +27,6 @@ final class ProcessSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
         resourceCoalitionIdentifier: UInt64,
         cpuPowerWatts: Double,
         cpuPercentage: Double,
-        interruptWakeupsPerSecond: Double,
-        diskReadBytesPerSecond: Double,
-        diskWriteBytesPerSecond: Double,
         sampleDuration: TimeInterval,
         cumulativeEnergyWattHours: Double,
         isWorkloadRoot: Bool
@@ -46,9 +40,6 @@ final class ProcessSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
         self.resourceCoalitionIdentifier = resourceCoalitionIdentifier
         self.cpuPowerWatts = cpuPowerWatts
         self.cpuPercentage = cpuPercentage
-        self.interruptWakeupsPerSecond = interruptWakeupsPerSecond
-        self.diskReadBytesPerSecond = diskReadBytesPerSecond
-        self.diskWriteBytesPerSecond = diskWriteBytesPerSecond
         self.sampleDuration = sampleDuration
         self.cumulativeEnergyWattHours = cumulativeEnergyWattHours
         self.isWorkloadRoot = isWorkloadRoot
@@ -73,9 +64,6 @@ final class ProcessSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
         )
         cpuPowerWatts = coder.decodeDouble(forKey: CodingKey.cpuPowerWatts)
         cpuPercentage = coder.decodeDouble(forKey: CodingKey.cpuPercentage)
-        interruptWakeupsPerSecond = coder.decodeDouble(forKey: CodingKey.interruptWakeupsPerSecond)
-        diskReadBytesPerSecond = coder.decodeDouble(forKey: CodingKey.diskReadBytesPerSecond)
-        diskWriteBytesPerSecond = coder.decodeDouble(forKey: CodingKey.diskWriteBytesPerSecond)
         sampleDuration = coder.decodeDouble(forKey: CodingKey.sampleDuration)
         cumulativeEnergyWattHours = coder.decodeDouble(forKey: CodingKey.cumulativeEnergyWattHours)
         isWorkloadRoot = coder.decodeBool(forKey: CodingKey.isWorkloadRoot)
@@ -94,9 +82,6 @@ final class ProcessSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
         )
         coder.encode(cpuPowerWatts, forKey: CodingKey.cpuPowerWatts)
         coder.encode(cpuPercentage, forKey: CodingKey.cpuPercentage)
-        coder.encode(interruptWakeupsPerSecond, forKey: CodingKey.interruptWakeupsPerSecond)
-        coder.encode(diskReadBytesPerSecond, forKey: CodingKey.diskReadBytesPerSecond)
-        coder.encode(diskWriteBytesPerSecond, forKey: CodingKey.diskWriteBytesPerSecond)
         coder.encode(sampleDuration, forKey: CodingKey.sampleDuration)
         coder.encode(cumulativeEnergyWattHours, forKey: CodingKey.cumulativeEnergyWattHours)
         coder.encode(isWorkloadRoot, forKey: CodingKey.isWorkloadRoot)
@@ -112,9 +97,6 @@ final class ProcessSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
         static let resourceCoalitionIdentifier = "resourceCoalitionIdentifier"
         static let cpuPowerWatts = "cpuPowerWatts"
         static let cpuPercentage = "cpuPercentage"
-        static let interruptWakeupsPerSecond = "interruptWakeupsPerSecond"
-        static let diskReadBytesPerSecond = "diskReadBytesPerSecond"
-        static let diskWriteBytesPerSecond = "diskWriteBytesPerSecond"
         static let sampleDuration = "sampleDuration"
         static let cumulativeEnergyWattHours = "cumulativeEnergyWattHours"
         static let isWorkloadRoot = "isWorkloadRoot"

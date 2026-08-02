@@ -4,7 +4,13 @@ import ServiceManagement
 
 @MainActor
 final class MonitorModel: ObservableObject {
+    private enum MenuBarThreshold {
+        static let activeWatts = 2.0
+        static let hotWatts = 10.0
+    }
+
     @Published private(set) var workloads: [WorkloadSnapshot] = []
+    @Published private(set) var systemPower: SystemPowerSnapshot?
     @Published private(set) var serviceStatus: SMAppService.Status
     @Published private(set) var lastUpdated: Date?
     @Published private(set) var errorMessage: String?
@@ -20,6 +26,26 @@ final class MonitorModel: ObservableObject {
 
     var topWorkloads: [WorkloadSnapshot] {
         Array(workloads.prefix(30))
+    }
+
+    var menuBarLabel: String {
+        guard let totalPowerWatts = systemPower?.totalPowerWatts else {
+            return "⚡️"
+        }
+        if totalPowerWatts >= MenuBarThreshold.hotWatts {
+            return "⚡️⚡️🔥"
+        }
+        if totalPowerWatts >= MenuBarThreshold.activeWatts {
+            return "⚡️⚡️"
+        }
+        return "⚡️"
+    }
+
+    var menuBarHelp: String {
+        guard let totalPowerWatts = systemPower?.totalPowerWatts else {
+            return "Battery Hogger is waiting for a power sample."
+        }
+        return "Battery Hogger total: \(totalPowerWatts.formatted(.number.precision(.fractionLength(2)))) W"
     }
 
     func start() {
@@ -54,6 +80,7 @@ final class MonitorModel: ObservableObject {
             try service.unregister()
             client.invalidate()
             workloads = []
+            systemPower = nil
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -77,7 +104,9 @@ final class MonitorModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            workloads = try await client.fetchWorkloadSnapshot()
+            let snapshot = try await client.fetchMonitorSnapshot()
+            workloads = snapshot.workloads
+            systemPower = snapshot.systemPower
             lastUpdated = Date()
             errorMessage = nil
         } catch {

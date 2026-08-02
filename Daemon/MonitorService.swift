@@ -16,12 +16,12 @@ final class MonitorService: NSObject, MonitorXPCProtocol {
         reply("Battery Hogger monitor is running as uid \(geteuid())")
     }
 
-    func fetchWorkloadSnapshot(
-        withReply reply: @escaping ([WorkloadSnapshot]?, NSError?) -> Void
+    func fetchMonitorSnapshot(
+        withReply reply: @escaping (MonitorSnapshot?, NSError?) -> Void
     ) {
-        let snapshots = engine.snapshot()
-        logger.debug("Returning \(snapshots.count) workload samples")
-        reply(snapshots, nil)
+        let snapshot = engine.snapshot()
+        logger.debug("Returning \(snapshot.workloads.count) workload samples")
+        reply(snapshot, nil)
     }
 }
 

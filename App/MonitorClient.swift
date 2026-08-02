@@ -18,7 +18,7 @@ final class MonitorClient: @unchecked Sendable {
     private let lock = NSLock()
     private var storedConnection: NSXPCConnection?
 
-    func fetchWorkloadSnapshot() async throws -> [WorkloadSnapshot] {
+    func fetchMonitorSnapshot() async throws -> MonitorSnapshot {
         let connection = connection()
 
         return try await withCheckedThrowingContinuation { continuation in
@@ -31,11 +31,11 @@ final class MonitorClient: @unchecked Sendable {
                 return
             }
 
-            monitor.fetchWorkloadSnapshot { snapshots, error in
+            monitor.fetchMonitorSnapshot { snapshot, error in
                 if let error {
                     continuation.resume(throwing: error)
-                } else if let snapshots {
-                    continuation.resume(returning: snapshots)
+                } else if let snapshot {
+                    continuation.resume(returning: snapshot)
                 } else {
                     continuation.resume(throwing: MonitorClientError.invalidResponse)
                 }

@@ -41,7 +41,13 @@ struct MenuContentView: View {
         } else if model.topWorkloads.isEmpty {
             collectingPlaceholder
         } else {
-            workloadList
+            VStack(spacing: 0) {
+                if let systemPower = model.systemPower {
+                    PowerOverviewView(systemPower: systemPower)
+                }
+                Divider()
+                workloadList
+            }
         }
     }
 
@@ -127,7 +133,7 @@ struct MenuContentView: View {
                 }
             }
         }
-        .frame(height: 440)
+        .frame(height: 320)
     }
 
     private var footer: some View {
@@ -159,6 +165,112 @@ struct MenuContentView: View {
             .fixedSize()
         }
         .padding(10)
+    }
+}
+
+private struct PowerOverviewView: View {
+    let systemPower: SystemPowerSnapshot
+
+    private let columns = Array(
+        repeating: GridItem(.flexible(), spacing: 6),
+        count: 3
+    )
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack {
+                Text("TRACKED POWER")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("Current estimates")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+            }
+
+            LazyVGrid(columns: columns, spacing: 6) {
+                OverviewCard(
+                    title: "Tracked Total",
+                    value: power(systemPower.totalPowerWatts),
+                    help: "CPU package + GPU package + measured DRAM, ANE, and PCIe power. This is not whole-machine power."
+                )
+                OverviewCard(
+                    title: "CPU Direct",
+                    value: power(systemPower.attributedCPUPowerWatts),
+                    help: "CPU power directly attributed to sampled workloads by kernel task-energy counters."
+                )
+                OverviewCard(
+                    title: "GPU Direct",
+                    value: systemPower.isGPUEnergyAvailable
+                        ? power(systemPower.attributedGPUPowerWatts)
+                        : "—",
+                    help: systemPower.isGPUEnergyAvailable
+                        ? "Estimated GPU power attributed through resource coalitions."
+                        : "GPU energy accounting is unavailable on this system."
+                )
+                OverviewCard(
+                    title: "CPU Residual",
+                    value: systemPower.isPackageCPUPowerAvailable
+                        ? power(systemPower.residualCPUPowerWatts)
+                        : "—",
+                    help: systemPower.isPackageCPUPowerAvailable
+                        ? "CPU package power that the kernel did not attribute directly to sampled processes."
+                        : "CPU package energy accounting is unavailable; Total falls back to direct CPU + GPU."
+                )
+                OverviewCard(
+                    title: "GPU Residual",
+                    value: systemPower.isPackageGPUPowerAvailable
+                        ? power(systemPower.residualGPUPowerWatts)
+                        : "—",
+                    help: systemPower.isPackageGPUPowerAvailable
+                        ? "GPU package power that resource coalitions did not directly account for."
+                        : "GPU package energy accounting is unavailable."
+                )
+                OverviewCard(
+                    title: "Other SoC",
+                    value: systemPower.isOtherSoCPowerAvailable
+                        ? power(systemPower.otherSoCPowerWatts)
+                        : "—",
+                    help: systemPower.isOtherSoCPowerAvailable
+                        ? "Measured DRAM, Neural Engine, and PCIe energy-model power."
+                        : "Other SoC energy domains are unavailable."
+                )
+            }
+        }
+        .padding(10)
+    }
+
+    private func power(_ watts: Double) -> String {
+        watts < 10 ? String(format: "%.2f W", watts) : String(format: "%.1f W", watts)
+    }
+
+}
+
+private struct OverviewCard: View {
+    let title: String
+    let value: String
+    let help: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            Text(value)
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
+        .frame(maxWidth: .infinity, minHeight: 38, alignment: .leading)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 5)
+        .background(.quaternary.opacity(0.55), in: RoundedRectangle(cornerRadius: 7))
+        .help(help)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title), \(value)")
+        .accessibilityHint(help)
     }
 }
 
@@ -301,11 +413,11 @@ private struct WorkloadDetailView: View {
                 fractionLength: 3
             )
             MetricSection(
-                title: "90-second average",
+                title: "90-second median",
                 unit: "W",
-                total: workload.rollingAveragePowerWatts,
-                cpu: workload.rollingAverageCPUPowerWatts,
-                gpu: workload.rollingAverageGPUPowerWatts,
+                total: workload.rollingMedianPowerWatts,
+                cpu: workload.rollingMedianCPUPowerWatts,
+                gpu: workload.rollingMedianGPUPowerWatts,
                 gpuAvailable: workload.isGPUEnergyAvailable,
                 fractionLength: 3
             )
@@ -416,7 +528,6 @@ private struct ProcessDetailRow: View {
         Launched: \(process.launchDate.formatted())
         CPU: \(process.cpuPercentage.formatted(.number.precision(.fractionLength(1))))%
         Resource coalition: \(process.resourceCoalitionIdentifier == 0 ? "Unavailable" : String(process.resourceCoalitionIdentifier))
-        Wakeups: \(process.interruptWakeupsPerSecond.formatted(.number.precision(.fractionLength(1))))/s
         """
     }
 }

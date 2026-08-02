@@ -21,9 +21,6 @@ struct ProcessMeasurement: Sendable {
     let cumulativeEnergyNanojoules: UInt64
     let cpuPowerWatts: Double
     let cpuPercentage: Double
-    let interruptWakeupsPerSecond: Double
-    let diskReadBytesPerSecond: Double
-    let diskWriteBytesPerSecond: Double
 }
 
 struct CoalitionGPUMeasurement: Sendable {
@@ -34,11 +31,19 @@ struct CoalitionGPUMeasurement: Sendable {
     let gpuPowerWatts: Double
 }
 
+struct PackageEnergyMeasurement: Sendable {
+    let sampleDuration: TimeInterval
+    let cpuPowerWatts: Double?
+    let gpuPowerWatts: Double?
+    let otherSoCPowerWatts: Double?
+}
+
 struct ProcessSampleBatch: Sendable {
     let sampledAtNanoseconds: UInt64
     let sampledAtDate: Date
     let measurements: [ProcessMeasurement]
     let coalitionGPUMeasurements: [CoalitionGPUMeasurement]
+    let packageEnergyMeasurement: PackageEnergyMeasurement?
 }
 
 final class ProcessSampler: @unchecked Sendable {
@@ -47,9 +52,6 @@ final class ProcessSampler: @unchecked Sendable {
         let energyNanojoules: UInt64
         let userTime: UInt64
         let systemTime: UInt64
-        let interruptWakeups: UInt64
-        let diskBytesRead: UInt64
-        let diskBytesWritten: UInt64
     }
 
     private struct Metadata {
@@ -67,23 +69,24 @@ final class ProcessSampler: @unchecked Sendable {
         let energyNanojoules: UInt64
     }
 
+    private struct PackageEnergyCounter {
+        let sampledAtNanoseconds: UInt64
+        let cpuEnergyJoules: Double?
+        let gpuEnergyJoules: Double?
+        let otherSoCEnergyJoules: Double?
+    }
+
     private struct Rates {
         let duration: TimeInterval
         let energyDeltaNanojoules: UInt64
         let cpuPowerWatts: Double
         let cpuPercentage: Double
-        let interruptWakeupsPerSecond: Double
-        let diskReadBytesPerSecond: Double
-        let diskWriteBytesPerSecond: Double
 
         static let baseline = Rates(
             duration: 0,
             energyDeltaNanojoules: 0,
             cpuPowerWatts: 0,
-            cpuPercentage: 0,
-            interruptWakeupsPerSecond: 0,
-            diskReadBytesPerSecond: 0,
-            diskWriteBytesPerSecond: 0
+            cpuPercentage: 0
         )
     }
 
@@ -91,9 +94,11 @@ final class ProcessSampler: @unchecked Sendable {
 
     private var previousCounters: [ProcessIdentity: Counters] = [:]
     private var previousGPUCounters: [UInt64: GPUCounters] = [:]
+    private var previousPackageEnergyCounter: PackageEnergyCounter?
     private var cumulativeEnergy: [ProcessIdentity: UInt64] = [:]
     private let timebase: mach_timebase_info_data_t
     private let gpuEnergyReader = CoalitionGPUEnergyReader()
+    private let packageCPUEnergyReader = PackageCPUEnergyReader()
     private let lock = NSLock()
 
     init() {
@@ -128,10 +133,7 @@ final class ProcessSampler: @unchecked Sendable {
                 sampledAtNanoseconds: sampledAtNanoseconds,
                 energyNanojoules: usage.ri_energy_nj,
                 userTime: usage.ri_user_time,
-                systemTime: usage.ri_system_time,
-                interruptWakeups: usage.ri_interrupt_wkups,
-                diskBytesRead: usage.ri_diskio_bytesread,
-                diskBytesWritten: usage.ri_diskio_byteswritten
+                systemTime: usage.ri_system_time
             )
             nextCounters[metadata.identity] = counters
 
@@ -154,10 +156,7 @@ final class ProcessSampler: @unchecked Sendable {
                     energyDeltaNanojoules: rates.energyDeltaNanojoules,
                     cumulativeEnergyNanojoules: processCumulativeEnergy,
                     cpuPowerWatts: rates.cpuPowerWatts,
-                    cpuPercentage: rates.cpuPercentage,
-                    interruptWakeupsPerSecond: rates.interruptWakeupsPerSecond,
-                    diskReadBytesPerSecond: rates.diskReadBytesPerSecond,
-                    diskWriteBytesPerSecond: rates.diskWriteBytesPerSecond
+                    cpuPercentage: rates.cpuPercentage
                 )
             )
         }
@@ -197,11 +196,30 @@ final class ProcessSampler: @unchecked Sendable {
         }
         previousGPUCounters = nextGPUCounters
 
+        let packageEnergyMeasurement: PackageEnergyMeasurement?
+        if let energy = packageCPUEnergyReader.cumulativeSystemEnergy() {
+            let current = PackageEnergyCounter(
+                sampledAtNanoseconds: DispatchTime.now().uptimeNanoseconds,
+                cpuEnergyJoules: energy.cpuEnergyJoules,
+                gpuEnergyJoules: energy.gpuEnergyJoules,
+                otherSoCEnergyJoules: energy.otherSoCEnergyJoules
+            )
+            packageEnergyMeasurement = packageEnergyRate(
+                current: current,
+                previous: previousPackageEnergyCounter
+            )
+            previousPackageEnergyCounter = current
+        } else {
+            packageEnergyMeasurement = nil
+            previousPackageEnergyCounter = nil
+        }
+
         return ProcessSampleBatch(
             sampledAtNanoseconds: sampledAtNanoseconds,
             sampledAtDate: sampledAtDate,
             measurements: measurements,
-            coalitionGPUMeasurements: gpuMeasurements
+            coalitionGPUMeasurements: gpuMeasurements,
+            packageEnergyMeasurement: packageEnergyMeasurement
         )
     }
 
@@ -300,10 +318,7 @@ final class ProcessSampler: @unchecked Sendable {
             duration: elapsedSeconds,
             energyDeltaNanojoules: energyDelta,
             cpuPowerWatts: Double(energyDelta) / Double(elapsedNanoseconds),
-            cpuPercentage: cpuNanoseconds / Double(elapsedNanoseconds) * 100,
-            interruptWakeupsPerSecond: Double(nonnegativeDelta(current.interruptWakeups, previous.interruptWakeups)) / elapsedSeconds,
-            diskReadBytesPerSecond: Double(nonnegativeDelta(current.diskBytesRead, previous.diskBytesRead)) / elapsedSeconds,
-            diskWriteBytesPerSecond: Double(nonnegativeDelta(current.diskBytesWritten, previous.diskBytesWritten)) / elapsedSeconds
+            cpuPercentage: cpuNanoseconds / Double(elapsedNanoseconds) * 100
         )
     }
 
@@ -333,6 +348,61 @@ final class ProcessSampler: @unchecked Sendable {
             delta,
             Double(delta) / Double(elapsedNanoseconds)
         )
+    }
+
+    private func packageEnergyRate(
+        current: PackageEnergyCounter,
+        previous: PackageEnergyCounter?
+    ) -> PackageEnergyMeasurement {
+        guard
+            let previous,
+            current.sampledAtNanoseconds > previous.sampledAtNanoseconds
+        else {
+            return PackageEnergyMeasurement(
+                sampleDuration: 0,
+                cpuPowerWatts: nil,
+                gpuPowerWatts: nil,
+                otherSoCPowerWatts: nil
+            )
+        }
+
+        let elapsedNanoseconds = current.sampledAtNanoseconds - previous.sampledAtNanoseconds
+        guard elapsedNanoseconds <= Self.maximumRateIntervalNanoseconds else {
+            return PackageEnergyMeasurement(
+                sampleDuration: 0,
+                cpuPowerWatts: nil,
+                gpuPowerWatts: nil,
+                otherSoCPowerWatts: nil
+            )
+        }
+        let elapsedSeconds = Double(elapsedNanoseconds) / 1_000_000_000
+        return PackageEnergyMeasurement(
+            sampleDuration: elapsedSeconds,
+            cpuPowerWatts: energyRate(
+                current.cpuEnergyJoules,
+                previous.cpuEnergyJoules,
+                elapsedSeconds: elapsedSeconds
+            ),
+            gpuPowerWatts: energyRate(
+                current.gpuEnergyJoules,
+                previous.gpuEnergyJoules,
+                elapsedSeconds: elapsedSeconds
+            ),
+            otherSoCPowerWatts: energyRate(
+                current.otherSoCEnergyJoules,
+                previous.otherSoCEnergyJoules,
+                elapsedSeconds: elapsedSeconds
+            )
+        )
+    }
+
+    private func energyRate(
+        _ current: Double?,
+        _ previous: Double?,
+        elapsedSeconds: TimeInterval
+    ) -> Double? {
+        guard let current, let previous, current >= previous else { return nil }
+        return (current - previous) / elapsedSeconds
     }
 
     private func decodeUTF8(_ buffer: [CChar], length: Int) -> String {

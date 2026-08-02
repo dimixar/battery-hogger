@@ -8,8 +8,10 @@ struct BatteryHoggerApp: App {
         MenuBarExtra {
             MenuContentView(model: model)
         } label: {
-            Text("BH")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+            Text(model.menuBarLabel)
+                .accessibilityLabel(model.menuBarHelp)
+                .help(model.menuBarHelp)
+                .task { model.start() }
         }
         .menuBarExtraStyle(.window)
     }

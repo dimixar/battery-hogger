@@ -2,9 +2,9 @@ import Foundation
 
 struct WorkloadDetection: Sendable {
     let status: WorkloadStatus
-    let rollingAveragePowerWatts: Double
-    let rollingAverageCPUPowerWatts: Double
-    let rollingAverageGPUPowerWatts: Double
+    let rollingMedianPowerWatts: Double
+    let rollingMedianCPUPowerWatts: Double
+    let rollingMedianGPUPowerWatts: Double
 }
 
 struct WorkloadDetector: Sendable {
@@ -20,7 +20,7 @@ struct WorkloadDetector: Sendable {
     }
 
     private static let candidateAverageWatts = 1.0
-    private static let hogAverageWatts = 1.5
+    private static let hogMedianWatts = 1.5
     private static let highSampleWatts = 1.0
     private static let recoveryWatts = 0.75
     private static let candidateWindow: TimeInterval = 30
@@ -41,12 +41,12 @@ struct WorkloadDetector: Sendable {
     ) -> WorkloadDetection {
         guard duration > 0, duration <= 15 else {
             prune(at: timestampNanoseconds)
-            let averages = weightedAverages(window: Self.hogWindow)
+            let medians = weightedMedians(window: Self.hogWindow)
             return WorkloadDetection(
                 status: status,
-                rollingAveragePowerWatts: averages.total,
-                rollingAverageCPUPowerWatts: averages.cpu,
-                rollingAverageGPUPowerWatts: averages.gpu
+                rollingMedianPowerWatts: medians.total,
+                rollingMedianCPUPowerWatts: medians.cpu,
+                rollingMedianGPUPowerWatts: medians.gpu
             )
         }
 
@@ -61,10 +61,10 @@ struct WorkloadDetector: Sendable {
         prune(at: timestampNanoseconds)
 
         let hogStatistics = statistics(window: Self.hogWindow)
-        let candidateAverage = weightedAverages(window: Self.candidateWindow).total
+        let candidateAverage = statistics(window: Self.candidateWindow).totalAverage
         let powerWatts = cpuPowerWatts + gpuPowerWatts
         let qualifiesAsHog = hogStatistics.coverage >= Self.minimumHogCoverage
-            && hogStatistics.totalAverage >= Self.hogAverageWatts
+            && hogStatistics.totalMedian >= Self.hogMedianWatts
             && hogStatistics.highFraction >= Self.requiredHighFraction
 
         if status == .sustainedHog {
@@ -87,9 +87,9 @@ struct WorkloadDetector: Sendable {
 
         return WorkloadDetection(
             status: status,
-            rollingAveragePowerWatts: hogStatistics.totalAverage,
-            rollingAverageCPUPowerWatts: hogStatistics.cpuAverage,
-            rollingAverageGPUPowerWatts: hogStatistics.gpuAverage
+            rollingMedianPowerWatts: hogStatistics.totalMedian,
+            rollingMedianCPUPowerWatts: hogStatistics.cpuMedian,
+            rollingMedianGPUPowerWatts: hogStatistics.gpuMedian
         )
     }
 
@@ -101,24 +101,25 @@ struct WorkloadDetector: Sendable {
         samples.removeAll { $0.timestampNanoseconds < cutoff }
     }
 
-    private func weightedAverages(window: TimeInterval) -> (
+    private func weightedMedians(window: TimeInterval) -> (
         total: Double,
         cpu: Double,
         gpu: Double
     ) {
         let values = statistics(window: window)
-        return (values.totalAverage, values.cpuAverage, values.gpuAverage)
+        return (values.totalMedian, values.cpuMedian, values.gpuMedian)
     }
 
     private func statistics(window: TimeInterval) -> (
         totalAverage: Double,
-        cpuAverage: Double,
-        gpuAverage: Double,
+        totalMedian: Double,
+        cpuMedian: Double,
+        gpuMedian: Double,
         coverage: TimeInterval,
         highFraction: Double
     ) {
         guard let latestTimestamp = samples.last?.timestampNanoseconds else {
-            return (0, 0, 0, 0, 0)
+            return (0, 0, 0, 0, 0, 0)
         }
 
         let windowNanoseconds = UInt64(window * 1_000_000_000)
@@ -127,23 +128,38 @@ struct WorkloadDetector: Sendable {
             : 0
         let relevantSamples = samples.filter { $0.timestampNanoseconds >= cutoff }
         let coverage = relevantSamples.reduce(0) { $0 + $1.duration }
-        guard coverage > 0 else { return (0, 0, 0, 0, 0) }
+        guard coverage > 0 else { return (0, 0, 0, 0, 0, 0) }
 
-        let weightedCPUPower = relevantSamples.reduce(0) {
-            $0 + $1.cpuPowerWatts * $1.duration
+        let weightedTotalPower = relevantSamples.reduce(0) {
+            $0 + $1.totalPowerWatts * $1.duration
         }
-        let weightedGPUPower = relevantSamples.reduce(0) {
-            $0 + $1.gpuPowerWatts * $1.duration
-        }
+        let medianSample = weightedMedianSample(relevantSamples)
         let highDuration = relevantSamples.reduce(0) {
             $0 + ($1.totalPowerWatts >= Self.highSampleWatts ? $1.duration : 0)
         }
         return (
-            totalAverage: (weightedCPUPower + weightedGPUPower) / coverage,
-            cpuAverage: weightedCPUPower / coverage,
-            gpuAverage: weightedGPUPower / coverage,
+            totalAverage: weightedTotalPower / coverage,
+            totalMedian: medianSample?.totalPowerWatts ?? 0,
+            cpuMedian: medianSample?.cpuPowerWatts ?? 0,
+            gpuMedian: medianSample?.gpuPowerWatts ?? 0,
             coverage: coverage,
             highFraction: highDuration / coverage
         )
+    }
+
+    private func weightedMedianSample(_ samples: [Sample]) -> Sample? {
+        let sorted = samples.sorted { $0.totalPowerWatts < $1.totalPowerWatts }
+        let totalDuration = sorted.reduce(0) { $0 + $1.duration }
+        guard totalDuration > 0 else { return nil }
+
+        let midpoint = totalDuration / 2
+        var accumulatedDuration: TimeInterval = 0
+        for sample in sorted {
+            accumulatedDuration += sample.duration
+            if accumulatedDuration >= midpoint {
+                return sample
+            }
+        }
+        return sorted.last
     }
 }

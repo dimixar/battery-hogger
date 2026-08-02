@@ -37,7 +37,7 @@ final class WorkloadAnalyzer {
     private var sessions: [String: SessionState] = [:]
     private var bundleCache: [String: BundleAssociation] = [:]
 
-    func analyze(_ batch: ProcessSampleBatch) -> [WorkloadSnapshot] {
+    func analyze(_ batch: ProcessSampleBatch) -> MonitorSnapshot {
         let measurementsByPID = Dictionary(
             uniqueKeysWithValues: batch.measurements.map { ($0.identity.pid, $0) }
         )
@@ -170,9 +170,9 @@ final class WorkloadAnalyzer {
                     currentPowerWatts: currentPower,
                     currentCPUPowerWatts: currentCPUPower,
                     currentGPUPowerWatts: currentGPUPower,
-                    rollingAveragePowerWatts: detection.rollingAveragePowerWatts,
-                    rollingAverageCPUPowerWatts: detection.rollingAverageCPUPowerWatts,
-                    rollingAverageGPUPowerWatts: detection.rollingAverageGPUPowerWatts,
+                    rollingMedianPowerWatts: detection.rollingMedianPowerWatts,
+                    rollingMedianCPUPowerWatts: detection.rollingMedianCPUPowerWatts,
+                    rollingMedianGPUPowerWatts: detection.rollingMedianGPUPowerWatts,
                     cumulativeEnergyWattHours: Double(
                         state.cumulativeCPUEnergyNanojoules
                             &+ state.cumulativeGPUEnergyNanojoules
@@ -196,12 +196,50 @@ final class WorkloadAnalyzer {
             return !isEphemeral || activeKeys.contains(key)
         }
 
-        return snapshots.sorted {
+        let sortedSnapshots = snapshots.sorted {
             let lhsRank = statusRank($0.status)
             let rhsRank = statusRank($1.status)
             if lhsRank != rhsRank { return lhsRank > rhsRank }
             return $0.currentPowerWatts > $1.currentPowerWatts
         }
+
+        let attributedCPUPower = sortedSnapshots.reduce(0) {
+            $0 + $1.currentCPUPowerWatts
+        }
+        let gpuPower = sortedSnapshots.reduce(0) { $0 + $1.currentGPUPowerWatts }
+        let packageMeasurement = batch.packageEnergyMeasurement.flatMap {
+            $0.sampleDuration > 0 ? $0 : nil
+        }
+        let packageCPUPower = packageMeasurement?.cpuPowerWatts ?? attributedCPUPower
+        let residualCPUPower = max(packageCPUPower - attributedCPUPower, 0)
+        let packageGPUPower = packageMeasurement?.gpuPowerWatts ?? gpuPower
+        let residualGPUPower = max(packageGPUPower - gpuPower, 0)
+        let otherSoCPower = packageMeasurement?.otherSoCPowerWatts ?? 0
+
+        return MonitorSnapshot(
+            workloads: sortedSnapshots,
+            systemPower: SystemPowerSnapshot(
+                totalPowerWatts: attributedCPUPower
+                    + residualCPUPower
+                    + gpuPower
+                    + residualGPUPower
+                    + otherSoCPower,
+                attributedCPUPowerWatts: attributedCPUPower,
+                packageCPUPowerWatts: packageCPUPower,
+                residualCPUPowerWatts: residualCPUPower,
+                attributedGPUPowerWatts: gpuPower,
+                packageGPUPowerWatts: packageGPUPower,
+                residualGPUPowerWatts: residualGPUPower,
+                otherSoCPowerWatts: otherSoCPower,
+                isPackageCPUPowerAvailable: packageMeasurement?.cpuPowerWatts != nil,
+                isPackageGPUPowerAvailable: packageMeasurement?.gpuPowerWatts != nil,
+                isOtherSoCPowerAvailable: packageMeasurement?.otherSoCPowerWatts != nil,
+                isGPUEnergyAvailable: sortedSnapshots.contains {
+                    $0.isGPUEnergyAvailable
+                }
+            )
+        )
+
     }
 
     private func resolveAssociation(
@@ -308,9 +346,6 @@ final class WorkloadAnalyzer {
             resourceCoalitionIdentifier: measurement.resourceCoalitionID ?? 0,
             cpuPowerWatts: measurement.cpuPowerWatts,
             cpuPercentage: measurement.cpuPercentage,
-            interruptWakeupsPerSecond: measurement.interruptWakeupsPerSecond,
-            diskReadBytesPerSecond: measurement.diskReadBytesPerSecond,
-            diskWriteBytesPerSecond: measurement.diskWriteBytesPerSecond,
             sampleDuration: measurement.sampleDuration,
             cumulativeEnergyWattHours: Double(measurement.cumulativeEnergyNanojoules)
                 / Self.nanojoulesPerWattHour,

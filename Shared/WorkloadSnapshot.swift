@@ -18,9 +18,9 @@ final class WorkloadSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
     let currentPowerWatts: Double
     let currentCPUPowerWatts: Double
     let currentGPUPowerWatts: Double
-    let rollingAveragePowerWatts: Double
-    let rollingAverageCPUPowerWatts: Double
-    let rollingAverageGPUPowerWatts: Double
+    let rollingMedianPowerWatts: Double
+    let rollingMedianCPUPowerWatts: Double
+    let rollingMedianGPUPowerWatts: Double
     let cumulativeEnergyWattHours: Double
     let cumulativeCPUEnergyWattHours: Double
     let cumulativeGPUEnergyWattHours: Double
@@ -36,9 +36,9 @@ final class WorkloadSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
         currentPowerWatts: Double,
         currentCPUPowerWatts: Double,
         currentGPUPowerWatts: Double,
-        rollingAveragePowerWatts: Double,
-        rollingAverageCPUPowerWatts: Double,
-        rollingAverageGPUPowerWatts: Double,
+        rollingMedianPowerWatts: Double,
+        rollingMedianCPUPowerWatts: Double,
+        rollingMedianGPUPowerWatts: Double,
         cumulativeEnergyWattHours: Double,
         cumulativeCPUEnergyWattHours: Double,
         cumulativeGPUEnergyWattHours: Double,
@@ -53,9 +53,9 @@ final class WorkloadSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
         self.currentPowerWatts = currentPowerWatts
         self.currentCPUPowerWatts = currentCPUPowerWatts
         self.currentGPUPowerWatts = currentGPUPowerWatts
-        self.rollingAveragePowerWatts = rollingAveragePowerWatts
-        self.rollingAverageCPUPowerWatts = rollingAverageCPUPowerWatts
-        self.rollingAverageGPUPowerWatts = rollingAverageGPUPowerWatts
+        self.rollingMedianPowerWatts = rollingMedianPowerWatts
+        self.rollingMedianCPUPowerWatts = rollingMedianCPUPowerWatts
+        self.rollingMedianGPUPowerWatts = rollingMedianGPUPowerWatts
         self.cumulativeEnergyWattHours = cumulativeEnergyWattHours
         self.cumulativeCPUEnergyWattHours = cumulativeCPUEnergyWattHours
         self.cumulativeGPUEnergyWattHours = cumulativeGPUEnergyWattHours
@@ -84,12 +84,12 @@ final class WorkloadSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
         currentPowerWatts = coder.decodeDouble(forKey: CodingKey.currentPowerWatts)
         currentCPUPowerWatts = coder.decodeDouble(forKey: CodingKey.currentCPUPowerWatts)
         currentGPUPowerWatts = coder.decodeDouble(forKey: CodingKey.currentGPUPowerWatts)
-        rollingAveragePowerWatts = coder.decodeDouble(forKey: CodingKey.rollingAveragePowerWatts)
-        rollingAverageCPUPowerWatts = coder.decodeDouble(
-            forKey: CodingKey.rollingAverageCPUPowerWatts
+        rollingMedianPowerWatts = coder.decodeDouble(forKey: CodingKey.rollingMedianPowerWatts)
+        rollingMedianCPUPowerWatts = coder.decodeDouble(
+            forKey: CodingKey.rollingMedianCPUPowerWatts
         )
-        rollingAverageGPUPowerWatts = coder.decodeDouble(
-            forKey: CodingKey.rollingAverageGPUPowerWatts
+        rollingMedianGPUPowerWatts = coder.decodeDouble(
+            forKey: CodingKey.rollingMedianGPUPowerWatts
         )
         cumulativeEnergyWattHours = coder.decodeDouble(forKey: CodingKey.cumulativeEnergyWattHours)
         cumulativeCPUEnergyWattHours = coder.decodeDouble(
@@ -111,14 +111,14 @@ final class WorkloadSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
         coder.encode(currentPowerWatts, forKey: CodingKey.currentPowerWatts)
         coder.encode(currentCPUPowerWatts, forKey: CodingKey.currentCPUPowerWatts)
         coder.encode(currentGPUPowerWatts, forKey: CodingKey.currentGPUPowerWatts)
-        coder.encode(rollingAveragePowerWatts, forKey: CodingKey.rollingAveragePowerWatts)
+        coder.encode(rollingMedianPowerWatts, forKey: CodingKey.rollingMedianPowerWatts)
         coder.encode(
-            rollingAverageCPUPowerWatts,
-            forKey: CodingKey.rollingAverageCPUPowerWatts
+            rollingMedianCPUPowerWatts,
+            forKey: CodingKey.rollingMedianCPUPowerWatts
         )
         coder.encode(
-            rollingAverageGPUPowerWatts,
-            forKey: CodingKey.rollingAverageGPUPowerWatts
+            rollingMedianGPUPowerWatts,
+            forKey: CodingKey.rollingMedianGPUPowerWatts
         )
         coder.encode(cumulativeEnergyWattHours, forKey: CodingKey.cumulativeEnergyWattHours)
         coder.encode(cumulativeCPUEnergyWattHours, forKey: CodingKey.cumulativeCPUEnergyWattHours)
@@ -136,9 +136,9 @@ final class WorkloadSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
         static let currentPowerWatts = "currentPowerWatts"
         static let currentCPUPowerWatts = "currentCPUPowerWatts"
         static let currentGPUPowerWatts = "currentGPUPowerWatts"
-        static let rollingAveragePowerWatts = "rollingAveragePowerWatts"
-        static let rollingAverageCPUPowerWatts = "rollingAverageCPUPowerWatts"
-        static let rollingAverageGPUPowerWatts = "rollingAverageGPUPowerWatts"
+        static let rollingMedianPowerWatts = "rollingMedianPowerWatts"
+        static let rollingMedianCPUPowerWatts = "rollingMedianCPUPowerWatts"
+        static let rollingMedianGPUPowerWatts = "rollingMedianGPUPowerWatts"
         static let cumulativeEnergyWattHours = "cumulativeEnergyWattHours"
         static let cumulativeCPUEnergyWattHours = "cumulativeCPUEnergyWattHours"
         static let cumulativeGPUEnergyWattHours = "cumulativeGPUEnergyWattHours"

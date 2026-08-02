@@ -109,12 +109,14 @@ fi
 shared_sources=(
     "$project_directory/Shared/MonitorConstants.swift"
     "$project_directory/Shared/ProcessSnapshot.swift"
-    "$project_directory/Shared/MonitorXPCProtocol.swift"
     "$project_directory/Shared/WorkloadSnapshot.swift"
+    "$project_directory/Shared/MonitorSnapshot.swift"
+    "$project_directory/Shared/MonitorXPCProtocol.swift"
 )
 
 daemon_sources=(
     "$project_directory/Daemon/CoalitionGPUEnergyReader.swift"
+    "$project_directory/Daemon/PackageCPUEnergyReader.swift"
     "$project_directory/Daemon/ProcessSampler.swift"
     "$project_directory/Daemon/WorkloadDetector.swift"
     "$project_directory/Daemon/WorkloadAnalyzer.swift"

@@ -2,10 +2,12 @@
 
 Battery Hogger is an Apple-silicon-only macOS menu-bar utility that combines the kernel's CPU- and GPU-energy estimates and identifies unusually expensive application workloads.
 
+Its menu-bar label reflects current reconciled system power: `⚡️` below 2 W or while waiting for data, `⚡️⚡️` from 2 W up to 10 W, and `⚡️⚡️🔥` at 10 W or above.
+
 ## Architecture
 
 - **BatteryHogger** is an unprivileged SwiftUI menu-bar app. It owns presentation, service registration, refresh timing, and eventually notifications and history.
-- **BatteryHoggerMonitor** is a root LaunchDaemon registered with `SMAppService`. It owns process enumeration, per-process CPU sampling, and resource-coalition GPU sampling.
+- **BatteryHoggerMonitor** is a root LaunchDaemon registered with `SMAppService`. It owns process enumeration, per-process CPU sampling, CPU-package energy sampling, and resource-coalition GPU sampling.
 - **Shared** contains the narrow `NSXPCConnection` contract and secure-coding transport model. Both peers enforce the other side's code-signing identity before exchanging messages.
 
 The privileged service intentionally exposes no process mutation, filesystem access, shell execution, or arbitrary PID operations. It returns a single system snapshot so that authorization stays easy to audit.
@@ -31,6 +33,19 @@ estimated CPU power (W) = CPU energy delta / elapsed time
 ```
 
 The final division works because one nanojoule per nanosecond is one joule per second, or one watt. A process instance is identified using its PID and launch time so that a reused PID is not compared with measurements from an older process.
+
+### Package power and residuals
+
+Per-process Recount energy does not add up to the complete CPU-package estimate reported by `powermetrics`, and coalition GPU energy may similarly leave package GPU power unattributed. Battery Hogger therefore also samples the private libIOReport **Energy Model** channels for CPU, GPU, DRAM, Neural Engine, and PCIe energy, converts their cumulative joules into watts, and calculates:
+
+```text
+CPU residual (W) = max(CPU package power - directly attributed CPU power, 0)
+GPU residual (W) = max(GPU package power - coalition-attributed GPU power, 0)
+Other SoC (W) = DRAM power + Neural Engine power + PCIe power
+Tracked Total (W) = CPU Direct + CPU Residual + GPU Direct + GPU Residual + Other SoC
+```
+
+The overview exposes both residuals as their own cards; they are never assigned to an application or used to inflate per-process values. Workload rows and sustained-hog detection continue to use directly attributed CPU plus coalition-attributed GPU power. If an undocumented package channel is unavailable, its card reports unavailable and Tracked Total falls back to the directly attributed value for that domain.
 
 ### GPU energy
 
@@ -60,7 +75,7 @@ The intended top-level list represents applications or standalone workloads rath
 - Processes associated with the same application bundle are grouped together.
 - The application's displayed CPU power is the sum of its own estimate and the estimates of its currently associated child/helper processes.
 - Its displayed GPU power is the sum of the distinct resource coalitions owned by that application group. A coalition is never counted twice.
-- Its displayed total watts are CPU watts plus GPU watts.
+- Its displayed total watts are directly attributed CPU watts plus coalition-attributed GPU watts. CPU and GPU package residuals and Other SoC remain system-level and are not assigned to a workload.
 - Selecting an application reveals the individual contributing processes.
 - Processes without bundle ownership are grouped by resource coalition when available. Otherwise, they remain standalone processes. They are not forced under `launchd`, `xpcproxy`, or another incidental system ancestor.
 
@@ -77,14 +92,14 @@ estimated total energy (Wh) = CPU energy (Wh) + GPU energy (Wh)
 
 This value means **estimated CPU and GPU energy observed since monitoring began**. It does not include energy consumed before Battery Hogger established its first baselines.
 
-The application detail view shows current, duration-weighted 90-second average, and session-cumulative values split into total, CPU, and GPU components. The child-process list remains CPU-only because macOS exposes GPU energy at coalition granularity rather than per process. Contributions from a child that exits remain part of the workload session total, even though that child disappears from the current-process list.
+The application detail view shows current, duration-weighted 90-second median, and session-cumulative values split into total, CPU, and GPU components. The median is the total-power sample at which half of the observed duration was at or below that value and half was at or above it, which prevents brief spikes from dominating the displayed sustained level. Its CPU and GPU cards show the components from that same sample, so they add up to the displayed median total. The child-process list remains CPU-only because macOS exposes GPU energy at coalition granularity rather than per process. Contributions from a child that exits remain part of the workload session total, even though that child disappears from the current-process list.
 
 ### Sustained-hog detection
 
 Battery Hogger prioritizes persistent consumption rather than reacting to a single spike. The current balanced detector uses duration-weighted samples and the following transparent rules:
 
 - A workload becomes a candidate when its 30-second average reaches 1 W. Candidates receive an orange indicator.
-- It becomes a sustained hog after at least 80 seconds of coverage in a 90-second window, when its average is at least 1.5 W and it spent at least 80% of the observed time at or above 1 W.
+- It becomes a sustained hog after at least 80 seconds of coverage in a 90-second window, when its duration-weighted median is at least 1.5 W and it spent at least 80% of the observed time at or above 1 W.
 - Sustained hogs are sorted above other workloads and marked red.
 - A sustained hog returns to normal only after remaining below 0.75 W for 60 consecutive seconds. This hysteresis prevents the row from repeatedly changing state near a threshold.
 
@@ -93,9 +108,10 @@ These thresholds are evaluated against combined estimated CPU plus GPU power, no
 ### Scope and limitations
 
 - CPU and GPU measurements are kernel/driver estimates, not direct readings from the battery.
-- The combined value does not include the display, networking hardware, storage, Neural Engine, memory, voltage-regulator losses, or other devices, so it is not whole-machine power.
+- Tracked Total includes CPU and GPU package power plus the available DRAM, Neural Engine, and PCIe energy-model domains. It does not include the display, networking hardware, storage devices, fans, voltage-regulator losses, or other unreported domains, so it is not whole-machine power.
 - GPU energy is available only per resource coalition. Individual child-process rows show CPU values and must not be interpreted as per-process GPU attribution.
 - The GPU interface is undocumented and may stop working after a macOS update. The UI explicitly shows GPU as unavailable when the optional query fails.
+- The package libIOReport interface is also undocumented and may change. The UI explicitly marks unavailable residual or Other SoC cards and falls back safely when a domain cannot be sampled.
 - Battery Hogger therefore labels values as **estimated power** and **estimated energy**, not battery percentage or Activity Monitor Energy Impact.
 - Very short-lived processes can start and exit between samples and may not be observed.
 - Rate baselines must be reset across sleep, wake, and other long sampling gaps.
@@ -121,6 +137,22 @@ The script creates `dist/BatteryHogger.app` and `dist/BatteryHogger.zip`. It aut
 
 ```bash
 ./scripts/build-app.sh --identity "Apple Development: Your Name (TEAMID)"
+```
+
+## Validating CPU attribution
+
+The repository includes a diagnostic probe that compares the sum of the same per-process `ri_energy_nj` deltas used by Battery Hogger with the package-level **CPU Power** estimate reported by `powermetrics` over synchronized intervals:
+
+```bash
+./scripts/compare-powermetrics.sh
+```
+
+The script requests administrator access because `powermetrics` is root-only. Its output reports directly attributed CPU power, Battery Hogger's libIOReport CPU-package reading, the `powermetrics` CPU reading, and the IOReport/`powermetrics` ratio for ten three-second samples. The package readings should closely agree; a directly attributed/package ratio below 100% is expected because the two counters do not have identical attribution boundaries. Processes that start and exit entirely between observations also cannot produce a per-process delta. The comparison is intended to reveal scale errors and consistent bias, not to prove that either estimate equals battery power.
+
+An optional third argument starts a controlled number of CPU load workers after authorization and stops them automatically when sampling ends. For example, this collects twenty samples with eight workers:
+
+```bash
+./scripts/compare-powermetrics.sh 20 3000 8
 ```
 
 If no signing identity is installed, the script produces an ad-hoc-signed build. That build is useful for UI testing, but macOS may reject privileged LaunchDaemon registration. Install an Apple Development or Developer ID Application certificate and rebuild for the complete workflow.
