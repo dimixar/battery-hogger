@@ -1,0 +1,509 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000000000000000000001 /* BatteryHoggerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000001 /* BatteryHoggerApp.swift */; };
+		A10000000000000000000002 /* MenuContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* MenuContentView.swift */; };
+		A10000000000000000000003 /* MonitorClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000003 /* MonitorClient.swift */; };
+		A10000000000000000000004 /* MonitorModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000004 /* MonitorModel.swift */; };
+		A10000000000000000000005 /* MonitorConstants.swift in App Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000005 /* MonitorConstants.swift */; };
+		A10000000000000000000006 /* ProcessSnapshot.swift in App Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000006 /* ProcessSnapshot.swift */; };
+		A10000000000000000000007 /* MonitorXPCProtocol.swift in App Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000007 /* MonitorXPCProtocol.swift */; };
+		A10000000000000000000008 /* main.swift in Daemon Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000008 /* main.swift */; };
+		A10000000000000000000009 /* MonitorService.swift in Daemon Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000009 /* MonitorService.swift */; };
+		A1000000000000000000000A /* ProcessSampler.swift in Daemon Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000A /* ProcessSampler.swift */; };
+		A1000000000000000000000B /* MonitorConstants.swift in Daemon Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000005 /* MonitorConstants.swift */; };
+		A1000000000000000000000C /* ProcessSnapshot.swift in Daemon Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000006 /* ProcessSnapshot.swift */; };
+		A1000000000000000000000D /* MonitorXPCProtocol.swift in Daemon Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000007 /* MonitorXPCProtocol.swift */; };
+		A1000000000000000000000E /* BatteryHoggerMonitor in Embed Helper Tools */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000C /* BatteryHoggerMonitor */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		A1000000000000000000000F /* Monitor plist in Embed LaunchDaemons */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000B /* com.molosnicdumitru.BatteryHogger.Monitor.plist */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		C10000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D10000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E10000000000000000000002;
+			remoteInfo = BatteryHoggerMonitor;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		F10000000000000000000001 /* Embed Helper Tools */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 6;
+			files = (
+				A1000000000000000000000E /* BatteryHoggerMonitor in Embed Helper Tools */,
+			);
+			name = "Embed Helper Tools";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F10000000000000000000002 /* Embed LaunchDaemons */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = Contents/Library/LaunchDaemons;
+			dstSubfolderSpec = 1;
+			files = (
+				A1000000000000000000000F /* Monitor plist in Embed LaunchDaemons */,
+			);
+			name = "Embed LaunchDaemons";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		B10000000000000000000001 /* BatteryHoggerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatteryHoggerApp.swift; sourceTree = "<group>"; };
+		B10000000000000000000002 /* MenuContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuContentView.swift; sourceTree = "<group>"; };
+		B10000000000000000000003 /* MonitorClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorClient.swift; sourceTree = "<group>"; };
+		B10000000000000000000004 /* MonitorModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorModel.swift; sourceTree = "<group>"; };
+		B10000000000000000000005 /* MonitorConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorConstants.swift; sourceTree = "<group>"; };
+		B10000000000000000000006 /* ProcessSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessSnapshot.swift; sourceTree = "<group>"; };
+		B10000000000000000000007 /* MonitorXPCProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorXPCProtocol.swift; sourceTree = "<group>"; };
+		B10000000000000000000008 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		B10000000000000000000009 /* MonitorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorService.swift; sourceTree = "<group>"; };
+		B1000000000000000000000A /* ProcessSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessSampler.swift; sourceTree = "<group>"; };
+		B1000000000000000000000B /* com.molosnicdumitru.BatteryHogger.Monitor.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = com.molosnicdumitru.BatteryHogger.Monitor.plist; sourceTree = "<group>"; };
+		B1000000000000000000000C /* BatteryHoggerMonitor */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = BatteryHoggerMonitor; sourceTree = BUILT_PRODUCTS_DIR; };
+		B1000000000000000000000D /* BatteryHogger.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BatteryHogger.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B1000000000000000000000E /* BatteryHogger-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "BatteryHogger-Info.plist"; sourceTree = "<group>"; };
+		B1000000000000000000000F /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		F20000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F20000000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		G10000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				G10000000000000000000002 /* App */,
+				G10000000000000000000003 /* Daemon */,
+				G10000000000000000000004 /* Shared */,
+				G10000000000000000000005 /* Resources */,
+				B1000000000000000000000F /* README.md */,
+				G10000000000000000000006 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		G10000000000000000000002 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000001 /* BatteryHoggerApp.swift */,
+				B10000000000000000000002 /* MenuContentView.swift */,
+				B10000000000000000000003 /* MonitorClient.swift */,
+				B10000000000000000000004 /* MonitorModel.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		G10000000000000000000003 /* Daemon */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000008 /* main.swift */,
+				B10000000000000000000009 /* MonitorService.swift */,
+				B1000000000000000000000A /* ProcessSampler.swift */,
+			);
+			path = Daemon;
+			sourceTree = "<group>";
+		};
+		G10000000000000000000004 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000005 /* MonitorConstants.swift */,
+				B10000000000000000000006 /* ProcessSnapshot.swift */,
+				B10000000000000000000007 /* MonitorXPCProtocol.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		G10000000000000000000005 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				B1000000000000000000000E /* BatteryHogger-Info.plist */,
+				B1000000000000000000000B /* com.molosnicdumitru.BatteryHogger.Monitor.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		G10000000000000000000006 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B1000000000000000000000D /* BatteryHogger.app */,
+				B1000000000000000000000C /* BatteryHoggerMonitor */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		E10000000000000000000001 /* BatteryHogger */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = H10000000000000000000002 /* Build configuration list for PBXNativeTarget "BatteryHogger" */;
+			buildPhases = (
+				F30000000000000000000001 /* Sources */,
+				F20000000000000000000001 /* Frameworks */,
+				F10000000000000000000001 /* Embed Helper Tools */,
+				F10000000000000000000002 /* Embed LaunchDaemons */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C20000000000000000000001 /* PBXTargetDependency */,
+			);
+			name = BatteryHogger;
+			packageProductDependencies = (
+			);
+			productName = BatteryHogger;
+			productReference = B1000000000000000000000D /* BatteryHogger.app */;
+			productType = "com.apple.product-type.application";
+		};
+		E10000000000000000000002 /* BatteryHoggerMonitor */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = H10000000000000000000003 /* Build configuration list for PBXNativeTarget "BatteryHoggerMonitor" */;
+			buildPhases = (
+				F30000000000000000000002 /* Sources */,
+				F20000000000000000000002 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BatteryHoggerMonitor;
+			packageProductDependencies = (
+			);
+			productName = BatteryHoggerMonitor;
+			productReference = B1000000000000000000000C /* BatteryHoggerMonitor */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D10000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2660;
+				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+					E10000000000000000000001 = {
+						CreatedOnToolsVersion = 26.6;
+					};
+					E10000000000000000000002 = {
+						CreatedOnToolsVersion = 26.6;
+					};
+				};
+			};
+			buildConfigurationList = H10000000000000000000001 /* Build configuration list for PBXProject "BatteryHogger" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = G10000000000000000000001;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = G10000000000000000000006 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E10000000000000000000001 /* BatteryHogger */,
+				E10000000000000000000002 /* BatteryHoggerMonitor */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		F30000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000001 /* BatteryHoggerApp.swift in Sources */,
+				A10000000000000000000002 /* MenuContentView.swift in Sources */,
+				A10000000000000000000003 /* MonitorClient.swift in Sources */,
+				A10000000000000000000004 /* MonitorModel.swift in Sources */,
+				A10000000000000000000005 /* MonitorConstants.swift in App Sources */,
+				A10000000000000000000006 /* ProcessSnapshot.swift in App Sources */,
+				A10000000000000000000007 /* MonitorXPCProtocol.swift in App Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F30000000000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000008 /* main.swift in Daemon Sources */,
+				A10000000000000000000009 /* MonitorService.swift in Daemon Sources */,
+				A1000000000000000000000A /* ProcessSampler.swift in Daemon Sources */,
+				A1000000000000000000000B /* MonitorConstants.swift in Daemon Sources */,
+				A1000000000000000000000C /* ProcessSnapshot.swift in Daemon Sources */,
+				A1000000000000000000000D /* MonitorXPCProtocol.swift in Daemon Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		C20000000000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E10000000000000000000002 /* BatteryHoggerMonitor */;
+			targetProxy = C10000000000000000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		I10000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		I10000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		I10000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Resources/BatteryHogger-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.molosnicdumitru.BatteryHogger;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = NO;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+		};
+			name = Debug;
+		};
+		I10000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Resources/BatteryHogger-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.molosnicdumitru.BatteryHogger;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = NO;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		I10000000000000000000005 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.molosnicdumitru.BatteryHogger.Monitor;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		I10000000000000000000006 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.molosnicdumitru.BatteryHogger.Monitor;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		H10000000000000000000001 /* Build configuration list for PBXProject "BatteryHogger" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				I10000000000000000000001 /* Debug */,
+				I10000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		H10000000000000000000002 /* Build configuration list for PBXNativeTarget "BatteryHogger" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				I10000000000000000000003 /* Debug */,
+				I10000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		H10000000000000000000003 /* Build configuration list for PBXNativeTarget "BatteryHoggerMonitor" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				I10000000000000000000005 /* Debug */,
+				I10000000000000000000006 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D10000000000000000000001 /* Project object */;
+}
