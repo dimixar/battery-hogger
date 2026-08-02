@@ -4,7 +4,7 @@ import ServiceManagement
 
 @MainActor
 final class MonitorModel: ObservableObject {
-    @Published private(set) var processes: [ProcessSnapshot] = []
+    @Published private(set) var workloads: [WorkloadSnapshot] = []
     @Published private(set) var serviceStatus: SMAppService.Status
     @Published private(set) var lastUpdated: Date?
     @Published private(set) var errorMessage: String?
@@ -18,8 +18,8 @@ final class MonitorModel: ObservableObject {
         serviceStatus = service.status
     }
 
-    var topProcesses: [ProcessSnapshot] {
-        Array(processes.prefix(20))
+    var topWorkloads: [WorkloadSnapshot] {
+        Array(workloads.prefix(30))
     }
 
     func start() {
@@ -53,7 +53,7 @@ final class MonitorModel: ObservableObject {
         do {
             try service.unregister()
             client.invalidate()
-            processes = []
+            workloads = []
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -77,7 +77,7 @@ final class MonitorModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            processes = try await client.fetchProcessSnapshot()
+            workloads = try await client.fetchWorkloadSnapshot()
             lastUpdated = Date()
             errorMessage = nil
         } catch {

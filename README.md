@@ -39,7 +39,7 @@ The intended top-level list represents applications or standalone workloads rath
 - Selecting an application reveals the individual contributing processes.
 - A process that cannot be reliably associated with an application bundle remains a standalone process. It is not forced under `launchd`, `xpcproxy`, or another incidental system ancestor.
 
-Application grouping and cumulative session totals are the next stage of the implementation. The current prototype transports and displays individual process samples.
+Grouping is conservative. Direct bundle membership takes precedence; otherwise, an unbundled process may inherit the bundle association of a same-user ancestor. Association stops at infrastructure boundaries such as `launchd`, `xpcproxy`, and `loginwindow`. If no reliable association is found, the process remains a standalone workload.
 
 ### Cumulative energy
 
@@ -50,6 +50,19 @@ estimated CPU energy (Wh) = accumulated energy (nJ) / 3,600,000,000,000
 ```
 
 This value means **estimated CPU energy observed since monitoring began**. It does not include energy consumed before Battery Hogger established its first baseline.
+
+The application detail view shows both the workload's cumulative total and the contribution recorded for each currently running process. Contributions from a child that exits remain part of the workload session total, even though that child disappears from the current-process list.
+
+### Sustained-hog detection
+
+Battery Hogger prioritizes persistent consumption rather than reacting to a single spike. The current balanced detector uses duration-weighted samples and the following transparent rules:
+
+- A workload becomes a candidate when its 30-second average reaches 1 W. Candidates receive an orange indicator.
+- It becomes a sustained hog after at least 80 seconds of coverage in a 90-second window, when its average is at least 1.5 W and it spent at least 80% of the observed time at or above 1 W.
+- Sustained hogs are sorted above other workloads and marked red.
+- A sustained hog returns to normal only after remaining below 0.75 W for 60 consecutive seconds. This hysteresis prevents the row from repeatedly changing state near a threshold.
+
+These thresholds describe sustained estimated CPU power, not whether the work is inherently unnecessary. A long compile, export, or indexing operation can be correctly identified as expensive even when the user intended it.
 
 ### Scope and limitations
 

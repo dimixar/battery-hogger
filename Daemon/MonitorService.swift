@@ -2,25 +2,25 @@ import Foundation
 import os
 
 final class MonitorService: NSObject, MonitorXPCProtocol {
-    private let sampler: ProcessSampler
+    private let engine: MonitorEngine
     private let logger = Logger(
         subsystem: MonitorConstants.daemonBundleIdentifier,
         category: "monitor"
     )
 
-    init(sampler: ProcessSampler) {
-        self.sampler = sampler
+    init(engine: MonitorEngine) {
+        self.engine = engine
     }
 
     func ping(withReply reply: @escaping (String) -> Void) {
         reply("Battery Hogger monitor is running as uid \(geteuid())")
     }
 
-    func fetchProcessSnapshot(
-        withReply reply: @escaping ([ProcessSnapshot]?, NSError?) -> Void
+    func fetchWorkloadSnapshot(
+        withReply reply: @escaping ([WorkloadSnapshot]?, NSError?) -> Void
     ) {
-        let snapshots = sampler.sample()
-        logger.debug("Returning \(snapshots.count) process samples")
+        let snapshots = engine.snapshot()
+        logger.debug("Returning \(snapshots.count) workload samples")
         reply(snapshots, nil)
     }
 }

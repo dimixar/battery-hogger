@@ -1,13 +1,37 @@
 import Darwin
 import Foundation
 
-final class ProcessSampler: @unchecked Sendable {
-    private struct Identity: Hashable {
-        let pid: pid_t
-        let startSeconds: UInt64
-        let startMicroseconds: UInt64
-    }
+struct ProcessIdentity: Hashable, Sendable {
+    let pid: pid_t
+    let startSeconds: UInt64
+    let startMicroseconds: UInt64
+}
 
+struct ProcessMeasurement: Sendable {
+    let identity: ProcessIdentity
+    let parentPID: pid_t
+    let uid: uid_t
+    let name: String
+    let executablePath: String?
+    let launchDate: Date
+    let sampledAtNanoseconds: UInt64
+    let sampleDuration: TimeInterval
+    let energyDeltaNanojoules: UInt64
+    let cumulativeEnergyNanojoules: UInt64
+    let cpuPowerWatts: Double
+    let cpuPercentage: Double
+    let interruptWakeupsPerSecond: Double
+    let diskReadBytesPerSecond: Double
+    let diskWriteBytesPerSecond: Double
+}
+
+struct ProcessSampleBatch: Sendable {
+    let sampledAtNanoseconds: UInt64
+    let sampledAtDate: Date
+    let measurements: [ProcessMeasurement]
+}
+
+final class ProcessSampler: @unchecked Sendable {
     private struct Counters {
         let sampledAtNanoseconds: UInt64
         let energyNanojoules: UInt64
@@ -19,7 +43,7 @@ final class ProcessSampler: @unchecked Sendable {
     }
 
     private struct Metadata {
-        let identity: Identity
+        let identity: ProcessIdentity
         let parentPID: pid_t
         let uid: uid_t
         let name: String
@@ -27,7 +51,30 @@ final class ProcessSampler: @unchecked Sendable {
         let launchDate: Date
     }
 
-    private var previousCounters: [Identity: Counters] = [:]
+    private struct Rates {
+        let duration: TimeInterval
+        let energyDeltaNanojoules: UInt64
+        let cpuPowerWatts: Double
+        let cpuPercentage: Double
+        let interruptWakeupsPerSecond: Double
+        let diskReadBytesPerSecond: Double
+        let diskWriteBytesPerSecond: Double
+
+        static let baseline = Rates(
+            duration: 0,
+            energyDeltaNanojoules: 0,
+            cpuPowerWatts: 0,
+            cpuPercentage: 0,
+            interruptWakeupsPerSecond: 0,
+            diskReadBytesPerSecond: 0,
+            diskWriteBytesPerSecond: 0
+        )
+    }
+
+    private static let maximumRateIntervalNanoseconds: UInt64 = 15_000_000_000
+
+    private var previousCounters: [ProcessIdentity: Counters] = [:]
+    private var cumulativeEnergy: [ProcessIdentity: UInt64] = [:]
     private let timebase: mach_timebase_info_data_t
     private let lock = NSLock()
 
@@ -37,18 +84,19 @@ final class ProcessSampler: @unchecked Sendable {
         timebase = value
     }
 
-    func sample() -> [ProcessSnapshot] {
+    func sample() -> ProcessSampleBatch {
         lock.withLock { sampleLocked() }
     }
 
-    private func sampleLocked() -> [ProcessSnapshot] {
-        let sampledAt = DispatchTime.now().uptimeNanoseconds
+    private func sampleLocked() -> ProcessSampleBatch {
+        let sampledAtNanoseconds = DispatchTime.now().uptimeNanoseconds
+        let sampledAtDate = Date()
         let pids = allProcessIdentifiers()
-        var nextCounters: [Identity: Counters] = [:]
+        var nextCounters: [ProcessIdentity: Counters] = [:]
         nextCounters.reserveCapacity(pids.count)
 
-        var snapshots: [ProcessSnapshot] = []
-        snapshots.reserveCapacity(pids.count)
+        var measurements: [ProcessMeasurement] = []
+        measurements.reserveCapacity(pids.count)
 
         for pid in pids where pid > 0 {
             guard
@@ -59,7 +107,7 @@ final class ProcessSampler: @unchecked Sendable {
             }
 
             let counters = Counters(
-                sampledAtNanoseconds: sampledAt,
+                sampledAtNanoseconds: sampledAtNanoseconds,
                 energyNanojoules: usage.ri_energy_nj,
                 userTime: usage.ri_user_time,
                 systemTime: usage.ri_system_time,
@@ -70,31 +118,40 @@ final class ProcessSampler: @unchecked Sendable {
             nextCounters[metadata.identity] = counters
 
             let rates = rates(current: counters, previous: previousCounters[metadata.identity])
-            snapshots.append(
-                ProcessSnapshot(
-                    processIdentifier: pid,
-                    parentProcessIdentifier: metadata.parentPID,
-                    userIdentifier: metadata.uid,
+            let processCumulativeEnergy = cumulativeEnergy[metadata.identity, default: 0]
+                + rates.energyDeltaNanojoules
+            cumulativeEnergy[metadata.identity] = processCumulativeEnergy
+
+            measurements.append(
+                ProcessMeasurement(
+                    identity: metadata.identity,
+                    parentPID: metadata.parentPID,
+                    uid: metadata.uid,
                     name: metadata.name,
                     executablePath: metadata.executablePath,
                     launchDate: metadata.launchDate,
+                    sampledAtNanoseconds: sampledAtNanoseconds,
+                    sampleDuration: rates.duration,
+                    energyDeltaNanojoules: rates.energyDeltaNanojoules,
+                    cumulativeEnergyNanojoules: processCumulativeEnergy,
                     cpuPowerWatts: rates.cpuPowerWatts,
                     cpuPercentage: rates.cpuPercentage,
                     interruptWakeupsPerSecond: rates.interruptWakeupsPerSecond,
                     diskReadBytesPerSecond: rates.diskReadBytesPerSecond,
-                    diskWriteBytesPerSecond: rates.diskWriteBytesPerSecond,
-                    sampleDuration: rates.duration
+                    diskWriteBytesPerSecond: rates.diskWriteBytesPerSecond
                 )
             )
         }
 
         previousCounters = nextCounters
-        return snapshots.sorted {
-            if $0.cpuPowerWatts == $1.cpuPowerWatts {
-                return $0.cpuPercentage > $1.cpuPercentage
-            }
-            return $0.cpuPowerWatts > $1.cpuPowerWatts
-        }
+        let activeIdentities = Set(nextCounters.keys)
+        cumulativeEnergy = cumulativeEnergy.filter { activeIdentities.contains($0.key) }
+
+        return ProcessSampleBatch(
+            sampledAtNanoseconds: sampledAtNanoseconds,
+            sampledAtDate: sampledAtDate,
+            measurements: measurements
+        )
     }
 
     private func allProcessIdentifiers() -> [pid_t] {
@@ -121,7 +178,7 @@ final class ProcessSampler: @unchecked Sendable {
         }
         guard bytesRead == MemoryLayout<proc_bsdinfo>.stride else { return nil }
 
-        let identity = Identity(
+        let identity = ProcessIdentity(
             pid: pid,
             startSeconds: info.pbi_start_tvsec,
             startMicroseconds: info.pbi_start_tvusec
@@ -165,24 +222,20 @@ final class ProcessSampler: @unchecked Sendable {
         return result == 0 ? usage : nil
     }
 
-    private func rates(current: Counters, previous: Counters?) -> (
-        cpuPowerWatts: Double,
-        cpuPercentage: Double,
-        interruptWakeupsPerSecond: Double,
-        diskReadBytesPerSecond: Double,
-        diskWriteBytesPerSecond: Double,
-        duration: TimeInterval
-    ) {
+    private func rates(current: Counters, previous: Counters?) -> Rates {
         guard
             let previous,
             current.sampledAtNanoseconds > previous.sampledAtNanoseconds
         else {
-            return (0, 0, 0, 0, 0, 0)
+            return .baseline
         }
 
         let elapsedNanoseconds = current.sampledAtNanoseconds - previous.sampledAtNanoseconds
-        let elapsedSeconds = Double(elapsedNanoseconds) / 1_000_000_000
+        guard elapsedNanoseconds <= Self.maximumRateIntervalNanoseconds else {
+            return .baseline
+        }
 
+        let elapsedSeconds = Double(elapsedNanoseconds) / 1_000_000_000
         let energyDelta = nonnegativeDelta(current.energyNanojoules, previous.energyNanojoules)
         let userDelta = nonnegativeDelta(current.userTime, previous.userTime)
         let systemDelta = nonnegativeDelta(current.systemTime, previous.systemTime)
@@ -191,13 +244,14 @@ final class ProcessSampler: @unchecked Sendable {
             * Double(timebase.numer)
             / Double(timebase.denom)
 
-        return (
+        return Rates(
+            duration: elapsedSeconds,
+            energyDeltaNanojoules: energyDelta,
             cpuPowerWatts: Double(energyDelta) / Double(elapsedNanoseconds),
             cpuPercentage: cpuNanoseconds / Double(elapsedNanoseconds) * 100,
             interruptWakeupsPerSecond: Double(nonnegativeDelta(current.interruptWakeups, previous.interruptWakeups)) / elapsedSeconds,
             diskReadBytesPerSecond: Double(nonnegativeDelta(current.diskBytesRead, previous.diskBytesRead)) / elapsedSeconds,
-            diskWriteBytesPerSecond: Double(nonnegativeDelta(current.diskBytesWritten, previous.diskBytesWritten)) / elapsedSeconds,
-            duration: elapsedSeconds
+            diskWriteBytesPerSecond: Double(nonnegativeDelta(current.diskBytesWritten, previous.diskBytesWritten)) / elapsedSeconds
         )
     }
 

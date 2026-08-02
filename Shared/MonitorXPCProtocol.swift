@@ -3,8 +3,8 @@ import Foundation
 @objc(BHMonitorXPCProtocol)
 protocol MonitorXPCProtocol {
     func ping(withReply reply: @escaping (String) -> Void)
-    func fetchProcessSnapshot(
-        withReply reply: @escaping ([ProcessSnapshot]?, NSError?) -> Void
+    func fetchWorkloadSnapshot(
+        withReply reply: @escaping ([WorkloadSnapshot]?, NSError?) -> Void
     )
 }
 
@@ -14,11 +14,11 @@ enum MonitorXPCInterface {
         // Foundation imports the Objective-C `NSSet<Class>` parameter as
         // `Set<AnyHashable>`, so bridge through NSSet to preserve class objects.
         let snapshotClasses = NSSet(
-            array: [NSArray.self, ProcessSnapshot.self]
+            array: [NSArray.self, WorkloadSnapshot.self, ProcessSnapshot.self]
         ) as! Set<AnyHashable>
         interface.setClasses(
             snapshotClasses,
-            for: #selector(MonitorXPCProtocol.fetchProcessSnapshot(withReply:)),
+            for: #selector(MonitorXPCProtocol.fetchWorkloadSnapshot(withReply:)),
             argumentIndex: 0,
             ofReply: true
         )

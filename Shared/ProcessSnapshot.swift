@@ -16,6 +16,8 @@ final class ProcessSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
     let diskReadBytesPerSecond: Double
     let diskWriteBytesPerSecond: Double
     let sampleDuration: TimeInterval
+    let cumulativeEnergyWattHours: Double
+    let isWorkloadRoot: Bool
 
     init(
         processIdentifier: Int32,
@@ -29,7 +31,9 @@ final class ProcessSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
         interruptWakeupsPerSecond: Double,
         diskReadBytesPerSecond: Double,
         diskWriteBytesPerSecond: Double,
-        sampleDuration: TimeInterval
+        sampleDuration: TimeInterval,
+        cumulativeEnergyWattHours: Double,
+        isWorkloadRoot: Bool
     ) {
         self.processIdentifier = processIdentifier
         self.parentProcessIdentifier = parentProcessIdentifier
@@ -43,6 +47,8 @@ final class ProcessSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
         self.diskReadBytesPerSecond = diskReadBytesPerSecond
         self.diskWriteBytesPerSecond = diskWriteBytesPerSecond
         self.sampleDuration = sampleDuration
+        self.cumulativeEnergyWattHours = cumulativeEnergyWattHours
+        self.isWorkloadRoot = isWorkloadRoot
     }
 
     required init?(coder: NSCoder) {
@@ -65,6 +71,8 @@ final class ProcessSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
         diskReadBytesPerSecond = coder.decodeDouble(forKey: CodingKey.diskReadBytesPerSecond)
         diskWriteBytesPerSecond = coder.decodeDouble(forKey: CodingKey.diskWriteBytesPerSecond)
         sampleDuration = coder.decodeDouble(forKey: CodingKey.sampleDuration)
+        cumulativeEnergyWattHours = coder.decodeDouble(forKey: CodingKey.cumulativeEnergyWattHours)
+        isWorkloadRoot = coder.decodeBool(forKey: CodingKey.isWorkloadRoot)
     }
 
     func encode(with coder: NSCoder) {
@@ -80,6 +88,8 @@ final class ProcessSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
         coder.encode(diskReadBytesPerSecond, forKey: CodingKey.diskReadBytesPerSecond)
         coder.encode(diskWriteBytesPerSecond, forKey: CodingKey.diskWriteBytesPerSecond)
         coder.encode(sampleDuration, forKey: CodingKey.sampleDuration)
+        coder.encode(cumulativeEnergyWattHours, forKey: CodingKey.cumulativeEnergyWattHours)
+        coder.encode(isWorkloadRoot, forKey: CodingKey.isWorkloadRoot)
     }
 
     private enum CodingKey {
@@ -95,5 +105,7 @@ final class ProcessSnapshot: NSObject, NSSecureCoding, @unchecked Sendable {
         static let diskReadBytesPerSecond = "diskReadBytesPerSecond"
         static let diskWriteBytesPerSecond = "diskWriteBytesPerSecond"
         static let sampleDuration = "sampleDuration"
+        static let cumulativeEnergyWattHours = "cumulativeEnergyWattHours"
+        static let isWorkloadRoot = "isWorkloadRoot"
     }
 }

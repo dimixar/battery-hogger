@@ -110,10 +110,14 @@ shared_sources=(
     "$project_directory/Shared/MonitorConstants.swift"
     "$project_directory/Shared/ProcessSnapshot.swift"
     "$project_directory/Shared/MonitorXPCProtocol.swift"
+    "$project_directory/Shared/WorkloadSnapshot.swift"
 )
 
 daemon_sources=(
     "$project_directory/Daemon/ProcessSampler.swift"
+    "$project_directory/Daemon/WorkloadDetector.swift"
+    "$project_directory/Daemon/WorkloadAnalyzer.swift"
+    "$project_directory/Daemon/MonitorEngine.swift"
     "$project_directory/Daemon/MonitorService.swift"
     "$project_directory/Daemon/main.swift"
 )

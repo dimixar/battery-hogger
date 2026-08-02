@@ -5,7 +5,7 @@ let logger = Logger(
     subsystem: MonitorConstants.daemonBundleIdentifier,
     category: "lifecycle"
 )
-let service = MonitorService(sampler: ProcessSampler())
+let service = MonitorService(engine: MonitorEngine())
 let delegate = MonitorListenerDelegate(service: service)
 let listener = NSXPCListener(machServiceName: MonitorConstants.daemonLabel)
 
