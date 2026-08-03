@@ -15,6 +15,17 @@ final class WorkloadAnalyzer {
         let mainExecutablePath: String?
     }
 
+    private struct CoalitionBundleAssociation {
+        let uid: uid_t
+        let association: BundleAssociation
+    }
+
+    private struct CoalitionBundleCandidate {
+        let coalitionID: UInt64
+        let measurement: ProcessMeasurement
+        let association: BundleAssociation
+    }
+
     private final class SessionState {
         let monitoredSince: Date
         var cumulativeCPUEnergyNanojoules: UInt64 = 0
@@ -48,6 +59,10 @@ final class WorkloadAnalyzer {
                 directAssociations[measurement.identity] = association
             }
         }
+        let coalitionAssociations = coalitionBundleAssociations(
+            measurements: batch.measurements,
+            directAssociations: directAssociations
+        )
 
         var resolvedAssociations: [ProcessIdentity: BundleAssociation] = [:]
         var groups: [String: [ProcessMeasurement]] = [:]
@@ -58,6 +73,7 @@ final class WorkloadAnalyzer {
                 for: measurement,
                 measurementsByPID: measurementsByPID,
                 directAssociations: directAssociations,
+                coalitionAssociations: coalitionAssociations,
                 resolvedAssociations: &resolvedAssociations,
                 visited: []
             )
@@ -246,6 +262,7 @@ final class WorkloadAnalyzer {
         for measurement: ProcessMeasurement,
         measurementsByPID: [pid_t: ProcessMeasurement],
         directAssociations: [ProcessIdentity: BundleAssociation],
+        coalitionAssociations: [UInt64: CoalitionBundleAssociation],
         resolvedAssociations: inout [ProcessIdentity: BundleAssociation],
         visited: Set<ProcessIdentity>
     ) -> BundleAssociation? {
@@ -255,6 +272,12 @@ final class WorkloadAnalyzer {
         }
         if let resolved = resolvedAssociations[measurement.identity] {
             return resolved
+        }
+        if let coalitionID = measurement.resourceCoalitionID,
+           let owner = coalitionAssociations[coalitionID],
+           owner.uid == measurement.uid {
+            resolvedAssociations[measurement.identity] = owner.association
+            return owner.association
         }
         guard !visited.contains(measurement.identity) else { return nil }
         guard let parent = measurementsByPID[measurement.parentPID] else { return nil }
@@ -269,6 +292,7 @@ final class WorkloadAnalyzer {
             for: parent,
             measurementsByPID: measurementsByPID,
             directAssociations: directAssociations,
+            coalitionAssociations: coalitionAssociations,
             resolvedAssociations: &resolvedAssociations,
             visited: nextVisited
         )
@@ -276,6 +300,52 @@ final class WorkloadAnalyzer {
             resolvedAssociations[measurement.identity] = association
         }
         return association
+    }
+
+    private func coalitionBundleAssociations(
+        measurements: [ProcessMeasurement],
+        directAssociations: [ProcessIdentity: BundleAssociation]
+    ) -> [UInt64: CoalitionBundleAssociation] {
+        let directCandidates: [CoalitionBundleCandidate] = measurements.compactMap {
+            measurement -> CoalitionBundleCandidate? in
+            guard
+                let coalitionID = measurement.resourceCoalitionID,
+                let association = directAssociations[measurement.identity]
+            else {
+                return nil
+            }
+            return CoalitionBundleCandidate(
+                coalitionID: coalitionID,
+                measurement: measurement,
+                association: association
+            )
+        }
+        let candidates = Dictionary(
+            grouping: directCandidates,
+            by: \CoalitionBundleCandidate.coalitionID
+        )
+
+        return candidates.compactMapValues { entries in
+            let mainExecutableEntries = entries.filter {
+                $0.measurement.executablePath == $0.association.mainExecutablePath
+            }
+            let preferredEntries = mainExecutableEntries.isEmpty
+                ? entries
+                : mainExecutableEntries
+            let associationKeys = Set(preferredEntries.map { $0.association.key })
+            let userIdentifiers = Set(preferredEntries.map { $0.measurement.uid })
+            guard
+                associationKeys.count == 1,
+                userIdentifiers.count == 1,
+                let preferred = preferredEntries.first
+            else {
+                return nil
+            }
+            return CoalitionBundleAssociation(
+                uid: preferred.measurement.uid,
+                association: preferred.association
+            )
+        }
     }
 
     private func bundleAssociation(forExecutablePath executablePath: String) -> BundleAssociation? {

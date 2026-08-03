@@ -72,14 +72,14 @@ The first CPU or GPU observation only establishes a baseline. Battery Hogger nee
 
 The intended top-level list represents applications or standalone workloads rather than every helper process:
 
-- Processes associated with the same application bundle are grouped together.
+- Processes associated with the same application bundle or its resource coalition are grouped together.
 - The application's displayed CPU power is the sum of its own estimate and the estimates of its currently associated child/helper processes.
 - Its displayed GPU power is the sum of the distinct resource coalitions owned by that application group. A coalition is never counted twice.
 - Its displayed total watts are directly attributed CPU watts plus coalition-attributed GPU watts. CPU and GPU package residuals and Other SoC remain system-level and are not assigned to a workload.
 - Selecting an application reveals the individual contributing processes.
 - Processes without bundle ownership are grouped by resource coalition when available. Otherwise, they remain standalone processes. They are not forced under `launchd`, `xpcproxy`, or another incidental system ancestor.
 
-Grouping is conservative. Direct bundle membership takes precedence; otherwise, an unbundled process may inherit the bundle association of a same-user ancestor. Association stops at infrastructure boundaries such as `launchd`, `xpcproxy`, and `loginwindow`. If no reliable association is found, the process remains a standalone workload.
+Grouping is conservative. Direct bundle membership takes precedence. When a resource coalition has one unambiguous same-user application owner, unbundled XPC services in that coalition inherit the application's association. Otherwise, an unbundled process may inherit the bundle association of a same-user ancestor. Association stops at infrastructure boundaries such as `launchd`, `xpcproxy`, and `loginwindow`. If no reliable association is found, the process remains a standalone workload.
 
 ### Cumulative energy
 
